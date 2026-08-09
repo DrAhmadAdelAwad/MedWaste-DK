@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بيان مطالبات المنشآت - منظومة النفايات الطبية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #fff !important; padding: 0 !important; }
+            .print-card { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-6">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- ترويسة الموقع الموحدة مع التنقل -->
+        <div class="no-print bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="text-center sm:text-right">
+                <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start">
+                    🏛️ بيان ومطالبات المنشآت الطبية
+                </h1>
+                <p class="text-emerald-100 mt-1 text-sm">استعلام تفصيلي واحتساب المبالغ المستحقة للتحصيل حسب الفئة</p>
+            </div>
+            <!-- شريط التنقل الموحد -->
+            <div class="flex flex-wrap gap-2 justify-center">
+                <a href="index.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    ➕ تسجيل جديد
+                </a>
+                <a href="view.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    📋 سجل الرحلات
+                </a>
+                <a href="reports.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    📊 لوحة التقارير
+                </a>
+                <a href="facility_report.html" class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition">
+                    🏛️ بيان المنشآت
+                </a>
+            </div>
+        </div>
+
+        <!-- شريط الفلترة واختيار نوع المنشأة المنهجي -->
+        <div class="no-print bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="font-bold text-slate-700 text-sm border-b pb-2">🎯 نطاق الاستعلام وتحديد الجهات المطلوب مطالباتها:</div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 1. نوع المنشأة الرئيسية -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">نوع المنشأة الرئيسية</label>
+                    <select id="facilityMainType" onchange="handleMainTypeFilterChange()" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white font-semibold text-emerald-900">
+                        <option value="">-- جميع الأنواع والتصنيفات --</option>
+                        <option value="إدارات صحية">إدارات صحية</option>
+                        <option value="منشأت حكومية">منشأت حكومية</option>
+                        <option value="منشأت خاصة">منشأت خاصة</option>
+                        <option value="شركات خاصة">شركات خاصة</option>
+                        <option value="وحدات معالجة">وحدات معالجة</option>
+                    </select>
+                </div>
+
+                <!-- 2. اختيار الإدارة الصحية -->
+                <div id="adminFilterBox" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">اختر الإدارة الصحية</label>
+                    <select id="healthAdminSelect" onchange="handleAdminFilterChange()" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="">-- جميع الإدارات الصحية --</option>
+                    </select>
+                </div>
+
+                <!-- 3. اختيار المنشأة / الوحدة الفرعية -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1" id="subFacilityLabel">المنشأة / الوحدة الفرعية</label>
+                    <select id="subFacilitySelect" onchange="generateFacilityReport()" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="">-- جميع المنشآت --</option>
+                    </select>
+                </div>
+
+                <!-- 4. الفترة الزمنية -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">الفترة الزمنية</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="startDate" onchange="generateFacilityReport()" class="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs w-full">
+                        <span class="text-xs text-slate-400">إلى</span>
+                        <input type="date" id="endDate" onchange="generateFacilityReport()" class="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs w-full">
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار التحكم والإجراءات -->
+            <div class="flex flex-wrap gap-2 pt-2 justify-between items-center border-t">
+                <button onclick="resetFilters()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-1.5 rounded-xl text-xs font-bold transition">
+                    🔄 إعادة ضبط الفلاتر
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                        🖨️ طباعة كشف الحساب
+                    </button>
+                    <button onclick="exportReportToExcel()" class="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 rounded-xl text-xs font-bold transition">
+                        📥 تصدير Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- بطاقات ملخص المطالبة المالية -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-emerald-500">
+                <p class="text-xs text-slate-500 font-semibold mb-1">إجمالي الوزن المسجل</p>
+                <h3 id="statWeight" class="text-2xl font-black text-slate-800">0 <span class="text-xs text-slate-500">كجم</span></h3>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-teal-500">
+                <p class="text-xs text-slate-500 font-semibold mb-1">عدد الزيارات / النقل</p>
+                <h3 id="statVisits" class="text-2xl font-black text-slate-800">0</h3>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-amber-500">
+                <p class="text-xs text-slate-500 font-semibold mb-1">سعر الكيلوجرام المطبق</p>
+                <h3 id="statRate" class="text-2xl font-black text-amber-700">0 <span class="text-xs text-slate-500">ج.م/كجم</span></h3>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-blue-600 bg-blue-50/20">
+                <p class="text-xs text-blue-900 font-bold mb-1">المبلغ الإجمالي المستحق</p>
+                <h3 id="statTotalAmount" class="text-2xl font-black text-blue-700">0 <span class="text-xs text-slate-500">جنية</span></h3>
+            </div>
+        </div>
+
+        <!-- جدول تفاصيل الحركة والمطالبة -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 print-card space-y-4">
+            <div class="flex justify-between items-center border-b pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800" id="reportTitle">كشف حركة ومطالبة رفع النفايات الطبية</h2>
+                    <p class="text-xs text-slate-500 mt-1" id="reportPeriodText">الفترة: كافة السجلات المسجلة</p>
+                </div>
+                <div class="text-left text-xs text-slate-500">
+                    <div class="font-bold text-slate-700">مديرية الشؤون الصحية بالدقهلية</div>
+                    <div>وحدة إدارة النفايات الطبية الخطرة</div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-right border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 border-b">
+                            <th class="p-2.5">م</th>
+                            <th class="p-2.5">تاريخ البلاغ</th>
+                            <th class="p-2.5">اسم المنشأة / الوحدة</th>
+                            <th class="p-2.5">التصنيف</th>
+                            <th class="p-2.5">وحدة المعالجة</th>
+                            <th class="p-2.5 text-center">الوزن (كجم)</th>
+                            <th class="p-2.5 text-center">السعر/كجم</th>
+                            <th class="p-2.5 text-center">الإجمالي (جنية)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody" class="divide-y divide-slate-100">
+                        <!-- البيانات المفلترة تظهر هنا -->
+                    </tbody>
+                    <tfoot class="bg-slate-50 font-bold text-slate-800 border-t">
+                        <tr>
+                            <td colspan="5" class="p-3 text-left">الإجمالي العام:</td>
+                            <td id="footTotalWeight" class="p-3 text-center text-emerald-700">0 كجم</td>
+                            <td class="p-3 text-center">-</td>
+                            <td id="footTotalAmount" class="p-3 text-center text-blue-700">0 جنية</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div id="noRecordsMsg" class="hidden text-center py-8 text-slate-400 text-xs">
+                لا توجد سجلات مطابقة لنطاق الاستعلام أو الفترة المحددة.
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let allRecords = [];
+        let sysAdmins = {};
+        let govFacilities = [];
+        let privFacilities = [];
+        let privCompanies = [];
+        let defaultTreatmentUnits = [
+            "محرقة بلقاس", "محرقة تمي الأمديد", "محرقة صدر بهوت", "محرقة ميت غمر",
+            "محرقة شبراهور هوفال", "محرقة شبراهور المعصرة", "مفرمة أولاد صبور", "مفرمة نبروه"
+        ];
+
+        let filteredRecords = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
+            sysAdmins = JSON.parse(localStorage.getItem('sys_health_admins') || '{}');
+            govFacilities = JSON.parse(localStorage.getItem('sys_gov_facilities') || '[]');
+            privFacilities = JSON.parse(localStorage.getItem('sys_priv_facilities') || '[]');
+            privCompanies = JSON.parse(localStorage.getItem('sys_priv_companies') || '[]');
+
+            initHealthAdminDropdown();
+            populateSubFacilitiesDropdown();
+            generateFacilityReport();
+        });
+
+        function initHealthAdminDropdown() {
+            const adminSelect = document.getElementById('healthAdminSelect');
+            adminSelect.innerHTML = '<option value="">-- جميع الإدارات الصحية --</option>';
+            Object.keys(sysAdmins).forEach(adm => {
+                let opt = document.createElement('option');
+                opt.value = adm;
+                opt.textContent = adm;
+                adminSelect.appendChild(opt);
+            });
+        }
+
+        function handleMainTypeFilterChange() {
+            const mainType = document.getElementById('facilityMainType').value;
+            const adminBox = document.getElementById('adminFilterBox');
+            
+            if (mainType === 'إدارات صحية') {
+                adminBox.classList.remove('hidden');
+            } else {
+                adminBox.classList.add('hidden');
+                document.getElementById('healthAdminSelect').value = '';
+            }
+
+            populateSubFacilitiesDropdown();
+            generateFacilityReport();
+        }
+
+        function handleAdminFilterChange() {
+            populateSubFacilitiesDropdown();
+            generateFacilityReport();
+        }
+
+        function populateSubFacilitiesDropdown() {
+            const mainType = document.getElementById('facilityMainType').value;
+            const selectedAdmin = document.getElementById('healthAdminSelect').value;
+            const subSelect = document.getElementById('subFacilitySelect');
+            const subLabel = document.getElementById('subFacilityLabel');
+
+            subSelect.innerHTML = '<option value="">-- جميع المنشآت --</option>';
+
+            let itemsList = [];
+
+            if (!mainType) {
+                let set = new Set();
+                allRecords.forEach(r => { if(r.subFacilityName || r.facilityName) set.add(r.subFacilityName || r.facilityName); });
+                itemsList = Array.from(set);
+                subLabel.innerText = 'المنشأة / الوحدة الفرعية';
+            } else if (mainType === 'إدارات صحية') {
+                subLabel.innerText = 'الوحدة الصحية التابعة للإدارة';
+                if (selectedAdmin && sysAdmins[selectedAdmin]) {
+                    itemsList = sysAdmins[selectedAdmin];
+                } else {
+                    let set = new Set();
+                    Object.values(sysAdmins).forEach(arr => arr.forEach(u => set.add(u)));
+                    itemsList = Array.from(set);
+                }
+            } else if (mainType === 'منشأت حكومية') {
+                subLabel.innerText = 'المستشفى / المركز الحكومي';
+                itemsList = govFacilities;
+            } else if (mainType === 'منشأت خاصة') {
+                subLabel.innerText = 'المنشأة الطبية الخاصة';
+                itemsList = privFacilities;
+            } else if (mainType === 'شركات خاصة') {
+                subLabel.innerText = 'الشركة الخاصة';
+                itemsList = privCompanies;
+            } else if (mainType === 'وحدات معالجة') {
+                subLabel.innerText = 'وحدة المعالجة';
+                itemsList = defaultTreatmentUnits;
+            }
+
+            itemsList.sort().forEach(item => {
+                let opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                subSelect.appendChild(opt);
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('facilityMainType').value = '';
+            document.getElementById('healthAdminSelect').value = '';
+            document.getElementById('adminFilterBox').classList.add('hidden');
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            populateSubFacilitiesDropdown();
+            generateFacilityReport();
+        }
+
+        function getRateForFacility(mainType) {
+            if (mainType === 'منشأت خاصة' || mainType === 'شركات خاصة') {
+                return 35;
+            }
+            return 15;
+        }
+
+        function generateFacilityReport() {
+            const mainType = document.getElementById('facilityMainType').value;
+            const selectedAdmin = document.getElementById('healthAdminSelect').value;
+            const selectedFacility = document.getElementById('subFacilitySelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            filteredRecords = allRecords.filter(r => {
+                if (startDate && r.reportDate < startDate) return false;
+                if (endDate && r.reportDate > endDate) return false;
+                if (mainType && r.facilityMainType !== mainType) return false;
+
+                if (mainType === 'إدارات صحية' && selectedAdmin) {
+                    if (r.healthAdmin !== selectedAdmin) return false;
+                }
+
+                if (selectedFacility) {
+                    let facName = r.subFacilityName || r.facilityName;
+                    if (facName !== selectedFacility) return false;
+                }
+
+                return true;
+            });
+
+            renderTableAndKPIs();
+        }
+
+        function renderTableAndKPIs() {
+            const tbody = document.getElementById('reportTableBody');
+            const noRecords = document.getElementById('noRecordsMsg');
+            
+            tbody.innerHTML = '';
+
+            let totalWeight = 0;
+            let totalAmount = 0;
+            let ratesArr = new Set();
+
+            if (filteredRecords.length === 0) {
+                noRecords.classList.remove('hidden');
+            } else {
+                noRecords.classList.add('hidden');
+            }
+
+            filteredRecords.forEach((r, idx) => {
+                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
+                w = isNaN(w) ? 0 : w;
+
+                let rate = getRateForFacility(r.facilityMainType);
+                ratesArr.add(rate);
+
+                let cost = w * rate;
+
+                totalWeight += w;
+                totalAmount += cost;
+
+                let nameDisplay = r.subFacilityName || r.facilityName || '-';
+
+                let tr = `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-2.5 font-semibold text-slate-500">${idx + 1}</td>
+                        <td class="p-2.5 font-medium text-slate-800">${r.reportDate || '-'}</td>
+                        <td class="p-2.5 font-bold text-slate-800">${nameDisplay}</td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${rate === 35 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${r.facilityMainType || 'حكومي/إدارة'}</span></td>
+                        <td class="p-2.5 text-slate-600">${r.treatmentUnit || '-'}</td>
+                        <td class="p-2.5 text-center font-bold text-emerald-700">${w.toFixed(2)}</td>
+                        <td class="p-2.5 text-center font-semibold text-slate-600">${rate} ج.م</td>
+                        <td class="p-2.5 text-center font-bold text-blue-700">${cost.toFixed(2)}</td>
+                    </tr>
+                `;
+                tbody.innerHTML += tr;
+            });
+
+            document.getElementById('statWeight').innerText = `${totalWeight.toFixed(2)} كجم`;
+            document.getElementById('statVisits').innerText = filteredRecords.length;
+            document.getElementById('statTotalAmount').innerText = `${totalAmount.toFixed(2)} جنية`;
+
+            let activeRateDisplay = 'مختلط';
+            if (ratesArr.size === 1) {
+                activeRateDisplay = `${Array.from(ratesArr)[0]} ج.م`;
+            } else if (ratesArr.size > 1) {
+                activeRateDisplay = 'مختلط (15 / 35)';
+            } else {
+                activeRateDisplay = '0';
+            }
+            document.getElementById('statRate').innerText = activeRateDisplay;
+
+            document.getElementById('footTotalWeight').innerText = `${totalWeight.toFixed(2)} كجم`;
+            document.getElementById('footTotalAmount').innerText = `${totalAmount.toFixed(2)} جنية`;
+
+            const mainType = document.getElementById('facilityMainType').value;
+            const selectedAdmin = document.getElementById('healthAdminSelect').value;
+            const selectedFacility = document.getElementById('subFacilitySelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let titleText = "كشف حركة ومطالبة رفع النفايات الطبية";
+            if (selectedFacility) titleText += ` - ${selectedFacility}`;
+            else if (selectedAdmin) titleText += ` - ${selectedAdmin}`;
+            else if (mainType) titleText += ` - (${mainType})`;
+
+            document.getElementById('reportTitle').innerText = titleText;
+
+            let periodText = "الفترة: كافة السجلات المسجلة";
+            if (startDate || endDate) {
+                periodText = `الفترة من: ${startDate || 'بداية السجلات'} إلى: ${endDate || 'اليوم'}`;
+            }
+            document.getElementById('reportPeriodText').innerText = periodText;
+        }
+
+        function exportReportToExcel() {
+            if (!filteredRecords || filteredRecords.length === 0) {
+                alert('لا توجد بيانات متاحة للتصدير.');
+                return;
+            }
+
+            const excelRows = filteredRecords.map((r, i) => {
+                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
+                w = isNaN(w) ? 0 : w;
+                let rate = getRateForFacility(r.facilityMainType);
+                return {
+                    "م": i + 1,
+                    "تاريخ البلاغ": r.reportDate || '',
+                    "التصنيف الرئيسي": r.facilityMainType || '',
+                    "الإدارة الصحية": r.healthAdmin || '',
+                    "اسم المنشأة / الوحدة": r.subFacilityName || r.facilityName || '',
+                    "وحدة المعالجة": r.treatmentUnit || '',
+                    "طبيعة الزيارة": r.visitType || '',
+                    "الوزن (كجم)": w,
+                    "السعر/كجم (جنية)": rate,
+                    "المبلغ المستحق (جنية)": w * rate,
+                    "اسم السائق": r.driverName || '',
+                    "رقم السيارة": r.carNumber || '',
+                    "توقيت التسجيل": r.timestamp || ''
+                };
+            });
+
+            const worksheet = XLSX.utils.json_to_sheet(excelRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "مطالبة النفايات الطبية");
+            XLSX.writeFile(workbook, "بيان_مطالبة_النفايات_الطبية.xlsx");
+        }
+    </script>
+</body>
+</html>

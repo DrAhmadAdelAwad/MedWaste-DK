@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المؤشرات والتقارير - منظومة النفايات الطبية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-6">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- ترويسة الموقع الموحدة مع التنقل -->
+        <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="text-center sm:text-right">
+                <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start">
+                    📊 لوحة المؤشرات والتقارير
+                </h1>
+                <p class="text-emerald-100 mt-2 text-sm">تحليل بيانات النفايات الطبية لمديرية الشؤون الصحية بالدقهلية</p>
+            </div>
+            <!-- شريط التنقل الموحد -->
+            <div class="flex flex-wrap gap-2 justify-center">
+                <a href="index.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    ➕ تسجيل جديد
+                </a>
+                <a href="view.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    📋 سجل الرحلات
+                </a>
+                <a href="reports.html" class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition">
+                    📊 لوحة التقارير
+                </a>
+                <a href="facility_report.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+                    🏛️ بيان المنشآت
+                </a>
+            </div>
+        </div>
+
+        <!-- شريط الفلترة حسب التاريخ وأزرار التحكم -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                <div class="font-bold text-slate-700 text-sm whitespace-nowrap">📅 تصفية البيانات بالفترة:</div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <input type="date" id="startDate" class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto">
+                    <span class="text-slate-500 text-sm">إلى</span>
+                    <input type="date" id="endDate" class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto">
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="generateReports()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto">
+                        تطبيق الفلتر
+                    </button>
+                    <button onclick="resetFilters()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto">
+                        الكل
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="exportToExcel()" class="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 w-full lg:w-auto shadow-sm">
+                📥 تصدير إلى Excel
+            </button>
+        </div>
+
+        <!-- بطاقات الإحصائيات (KPIs) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-emerald-500">
+                <div>
+                    <p class="text-sm text-slate-500 font-semibold mb-1">إجمالي وزن النفايات المرفوعة</p>
+                    <h3 id="totalWeight" class="text-3xl font-black text-slate-800">0 <span class="text-lg text-slate-500 font-normal">كجم</span></h3>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-2xl">
+                    ⚖️
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-teal-500">
+                <div>
+                    <p class="text-sm text-slate-500 font-semibold mb-1">إجمالي المنشآت المزارة</p>
+                    <h3 id="totalFacilities" class="text-3xl font-black text-slate-800">0</h3>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-2xl">
+                    🏥
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-blue-500">
+                <div>
+                    <p class="text-sm text-slate-500 font-semibold mb-1">عدد رحلات خطوط السير</p>
+                    <h3 id="totalTrips" class="text-3xl font-black text-slate-800">0</h3>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl">
+                    🚚
+                </div>
+            </div>
+        </div>
+
+        <!-- منطقة الرسوم البيانية -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-700 mb-4 border-b pb-2">الأوزان الموردة لكل وحدة معالجة (كجم)</h3>
+                <div class="relative h-72">
+                    <canvas id="treatmentUnitsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-700 mb-4 border-b pb-2">توزيع الزيارات حسب نوع المنشأة</h3>
+                <div class="relative h-72 flex justify-center">
+                    <canvas id="facilitiesTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let unitsChartInstance = null;
+        let typesChartInstance = null;
+        let currentFilteredRecords = [];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('endDate').value = today;
+            
+            const firstDay = new Date();
+            firstDay.setDate(1);
+            document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+
+            generateReports();
+        });
+
+        function resetFilters() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            generateReports();
+        }
+
+        function generateReports() {
+            const allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            currentFilteredRecords = allRecords.filter(record => {
+                if (!record.reportDate) return false;
+                if (startDate && record.reportDate < startDate) return false;
+                if (endDate && record.reportDate > endDate) return false;
+                return true;
+            });
+
+            calculateKPIs(currentFilteredRecords);
+            drawCharts(currentFilteredRecords);
+        }
+
+        function calculateKPIs(records) {
+            let totalWeight = 0;
+            let tripsSet = new Set();
+            
+            records.forEach(r => {
+                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
+                totalWeight += isNaN(w) ? 0 : w;
+
+                let tripKey = `${r.reportDate}_${r.treatmentUnit}_${r.driverName}_${r.carNumber}`;
+                tripsSet.add(tripKey);
+            });
+
+            animateValue("totalWeight", totalWeight);
+            animateValue("totalFacilities", records.length);
+            animateValue("totalTrips", tripsSet.size);
+        }
+
+        function drawCharts(records) {
+            const unitsData = {};
+            const typesData = {};
+
+            records.forEach(r => {
+                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
+                w = isNaN(w) ? 0 : w;
+                
+                if (r.treatmentUnit) {
+                    unitsData[r.treatmentUnit] = (unitsData[r.treatmentUnit] || 0) + w;
+                }
+
+                if (r.facilityMainType) {
+                    typesData[r.facilityMainType] = (typesData[r.facilityMainType] || 0) + 1;
+                }
+            });
+
+            const unitsCtx = document.getElementById('treatmentUnitsChart').getContext('2d');
+            if (unitsChartInstance) unitsChartInstance.destroy();
+            
+            unitsChartInstance = new Chart(unitsCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(unitsData),
+                    datasets: [{
+                        label: 'إجمالي الوزن (كجم)',
+                        data: Object.values(unitsData),
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderColor: 'rgba(5, 150, 105, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'الوزن (كجم)' } }
+                    }
+                }
+            });
+
+            const typesCtx = document.getElementById('facilitiesTypeChart').getContext('2d');
+            if (typesChartInstance) typesChartInstance.destroy();
+
+            typesChartInstance = new Chart(typesCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typesData),
+                    datasets: [{
+                        data: Object.values(typesData),
+                        backgroundColor: [
+                            '#0ea5e9',
+                            '#f59e0b',
+                            '#10b981',
+                            '#8b5cf6',
+                            '#64748b'
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { family: 'Segoe UI' } } }
+                    }
+                }
+            });
+        }
+
+        function animateValue(id, end, duration = 1000) {
+            const obj = document.getElementById(id);
+            const start = 0;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const currentVal = progress * (end - start) + start;
+                obj.innerHTML = currentVal.toLocaleString('en-US', {maximumFractionDigits: 1}) + (id === 'totalWeight' ? ' <span class="text-lg text-slate-500 font-normal">كجم</span>' : '');
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function exportToExcel() {
+            if (!currentFilteredRecords || currentFilteredRecords.length === 0) {
+                alert('لا توجد بيانات متاحة للتصدير في الفترة المحددة.');
+                return;
+            }
+
+            const formattedData = currentFilteredRecords.map((item, index) => ({
+                "م": index + 1,
+                "تاريخ البلاغ": item.reportDate || '',
+                "وحدة المعالجة": item.treatmentUnit || '',
+                "اسم السائق": item.driverName || '',
+                "رقم السيارة": item.carNumber || '',
+                "نوع المنشأة الرئيسية": item.facilityMainType || '',
+                "الإدارة الصحية": item.healthAdmin || '',
+                "اسم المنشأة / الوحدة": item.subFacilityName || item.facilityName || '',
+                "طبيعة الزيارة": item.visitType || '',
+                "الوزن المسجل": item.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(item.wasteWeight || 0),
+                "وحدة القياس": item.visitType === 'زيارة فقط بدون نقل' ? '-' : (item.weightUnit || 'كيلوجرام'),
+                "تاريخ وقت التسجيل": item.timestamp || ''
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(formattedData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير النفايات الطبية");
+
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            let fileName = 'تقرير_النفايات_الطبية';
+            if (startDate || endDate) {
+                fileName += `_${startDate || 'البداية'}_إلى_${endDate || 'النهاية'}`;
+            }
+            fileName += '.xlsx';
+
+            XLSX.writeFile(workbook, fileName);
+        }
+    </script>
+</body>
+</html>

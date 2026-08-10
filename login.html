@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - منظومة النفايات الطبية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+        <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 text-center">
+            <h1 class="text-2xl font-bold">تسجيل الدخول</h1>
+            <p class="text-emerald-100 mt-1 text-sm">منظومة النفايات الطبية الخطرة بالدقهلية</p>
+        </div>
+        
+        <form id="loginForm" class="p-8 space-y-5">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">البريد الإلكتروني</label>
+                <input type="email" id="email" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-left" dir="ltr">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">كلمة المرور</label>
+                <input type="password" id="password" required class="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-left" dir="ltr">
+            </div>
+            
+            <div id="statusMsg" class="hidden text-center text-sm font-bold p-2 rounded-xl text-rose-700 bg-rose-50 border border-rose-200"></div>
+            
+            <button type="submit" id="submitBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition">
+                دخول
+            </button>
+            
+            <div class="flex justify-between items-center text-xs font-semibold mt-4">
+                <a href="forgot_password.html" class="text-teal-700 hover:underline">نسيت كلمة المرور؟</a>
+                <a href="register.html" class="text-slate-600 hover:underline">تسجيل مستخدم جديد</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // ضع رابط السكربت الخاص بك هنا
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwSGLsP2eWUhnaFwwL8pgSYsa4ox7eKNOI6DwtVBAY_5mcYxzotok5jc4LhUi1TPGnm/exec';
+
+        // التحقق مما إذا كان مسجل الدخول بالفعل
+        if (localStorage.getItem('currentUser')) {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const msg = document.getElementById('statusMsg');
+            btn.innerText = 'جاري التحقق...';
+            btn.disabled = true;
+
+            let formData = new FormData();
+            formData.append('action', 'login');
+            formData.append('email', document.getElementById('email').value);
+            formData.append('password', document.getElementById('password').value);
+
+            try {
+                const response = await fetch(scriptURL, { method: 'POST', body: formData });
+                const result = await response.json();
+                
+                if (result.result === 'success') {
+                    localStorage.setItem('currentUser', JSON.stringify(result.user));
+                    window.location.href = 'index.html';
+                } else {
+                    msg.innerText = result.message;
+                    msg.classList.remove('hidden');
+                    btn.innerText = 'دخول';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                msg.innerText = 'خطأ في الاتصال بالخادم';
+                msg.classList.remove('hidden');
+                btn.innerText = 'دخول';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

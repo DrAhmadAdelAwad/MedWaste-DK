@@ -117,17 +117,47 @@
     </div>
 
     <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwSGLsP2eWUhnaFwwL8pgSYsa4ox7eKNOI6DwtVBAY_5mcYxzotok5jc4LhUi1TPGnm/exec';
         let unitsChartInstance = null;
         let typesChartInstance = null;
         let currentFilteredRecords = [];
 
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('endDate').value = today;
             
             const firstDay = new Date();
             firstDay.setDate(1);
             document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+
+            try {
+                const response = await fetch(scriptURL);
+                if (!response.ok) throw new Error('فشل الاتصال بالسحابة');
+                let rawData = await response.json();
+                
+                const cloudData = rawData.map(record => {
+                    if (record.reportDate) {
+                        let d = new Date(record.reportDate);
+                        if (!isNaN(d)) {
+                            let yyyy = d.getFullYear();
+                            let mm = String(d.getMonth() + 1).padStart(2, '0');
+                            let dd = String(d.getDate()).padStart(2, '0');
+                            record.reportDate = `${yyyy}-${mm}-${dd}`;
+                        }
+                    }
+                    if (record.timestamp) {
+                        let t = new Date(record.timestamp);
+                        if (!isNaN(t)) {
+                            record.timestamp = t.toLocaleString('ar-EG', { hour12: true });
+                        }
+                    }
+                    return record;
+                });
+                
+                localStorage.setItem('dakahlia_waste_records', JSON.stringify(cloudData));
+            } catch (error) {
+                console.error('حدث خطأ أثناء جلب البيانات:', error);
+            }
 
             generateReports();
         });
@@ -296,6 +326,83 @@
 
             XLSX.writeFile(workbook, fileName);
         }
+    </script>
+    
+    <!-- طبقة الحماية وتوزيع الصلاحيات -->
+    <script>
+        // 1. التحقق من تسجيل الدخول
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser) {
+            window.location.href = 'login.html';
+        }
+
+        // 2. التحقق من صلاحية الوصول للصفحة الحالية
+        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+        const restrictedPages = ['view.html', 'reports.html', 'facility_report.html'];
+        
+        if (currentUser && currentUser.role === 'مدخل بيانات' && restrictedPages.some(p => currentPage.includes(p))) {
+            alert('عفواً، صلاحيتك (مدخل بيانات) لا تسمح بالوصول لهذه الصفحة.');
+            window.location.href = 'index.html';
+        }
+
+        // 3. تطبيق قيود وتعديلات الواجهة بعد التحميل
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!currentUser) return;
+
+            // أ. تعديل شريط التنقل (إضافة المستخدم، خروج، ولوحة المدير)
+            const navContainer = document.querySelector('.flex.flex-wrap.gap-2.justify-center');
+            if (navContainer) {
+                // إخفاء روابط التقارير لمدخل البيانات
+                if (currentUser.role === 'مدخل بيانات') {
+                    const links = navContainer.querySelectorAll('a');
+                    links.forEach(link => {
+                        if(!link.href.includes('index.html')) link.style.display = 'none';
+                    });
+                }
+
+                // زر الإدارة للمدير فقط
+                if (currentUser.role === 'مدير') {
+                    const adminBtn = document.createElement('a');
+                    adminBtn.href = 'admin_users.html';
+                    adminBtn.className = 'bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
+                    adminBtn.innerText = '⚙️ لوحة المستخدمين';
+                    navContainer.appendChild(adminBtn);
+                }
+
+                // رسالة الترحيب
+                const userBadge = document.createElement('span');
+                userBadge.className = 'bg-white/20 text-white px-3.5 py-2 rounded-xl font-semibold text-xs border border-white/30 backdrop-blur-sm flex items-center';
+                userBadge.innerText = `👤 ${currentUser.fullName} (${currentUser.role})`;
+                navContainer.appendChild(userBadge);
+
+                // زر تسجيل الخروج
+                const logoutBtn = document.createElement('button');
+                logoutBtn.type = 'button';
+                logoutBtn.onclick = () => {
+                    localStorage.removeItem('currentUser');
+                    window.location.href = 'login.html';
+                };
+                logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
+                logoutBtn.innerText = '🚪 خروج';
+                navContainer.appendChild(logoutBtn);
+            }
+
+            // ب. حجب صلاحيات الحذف والتعديل لغير المدير (للمشرفين ومدخلي البيانات)
+            if (currentUser.role !== 'مدير') {
+                // إخفاء زر "مسح الذاكرة المحلية"
+                const clearBtn = document.querySelector('button[onclick="clearLocalStorage()"]');
+                if (clearBtn) clearBtn.style.display = 'none';
+
+                // إخفاء زر "إدارة القوائم والنسخ الاحتياطي"
+                const managerBtn = document.querySelector('button[onclick="toggleManagerModal()"]');
+                if (managerBtn) managerBtn.style.display = 'none';
+
+                // إخفاء أزرار "حذف الرحلة" في الجدول بشكل جذري (حتى بعد البحث والفلترة)
+                const style = document.createElement('style');
+                style.innerHTML = `button[onclick^="deleteTrip"] { display: none !important; }`;
+                document.head.appendChild(style);
+            }
+        });
     </script>
 </body>
 </html>

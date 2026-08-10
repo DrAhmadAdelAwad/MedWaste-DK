@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - المستخدمين</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-6">
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <div class="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-6 rounded-2xl flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold">لوحة تحكم المدير - صلاحيات الأعضاء</h1>
+                <p class="text-slate-300 mt-1 text-sm">إدارة حسابات المستخدمين وترقية الصلاحيات</p>
+            </div>
+            <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl text-sm font-bold">العودة للمنظومة</a>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <table class="w-full text-right">
+                <thead class="bg-slate-50 border-b">
+                    <tr>
+                        <th class="p-4 text-sm text-slate-600">الاسم والوظيفة</th>
+                        <th class="p-4 text-sm text-slate-600">التواصل</th>
+                        <th class="p-4 text-sm text-slate-600">الصلاحية الحالية</th>
+                        <th class="p-4 text-sm text-slate-600">تغيير الصلاحية</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable" class="divide-y divide-slate-100">
+                    <tr><td colspan="4" class="p-8 text-center text-slate-500">جاري تحميل المستخدمين...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbwSGLsP2eWUhnaFwwL8pgSYsa4ox7eKNOI6DwtVBAY_5mcYxzotok5jc4LhUi1TPGnm/exec';
+        
+        // حماية الصفحة للمدير فقط
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser || currentUser.role !== 'مدير') {
+            alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');
+            window.location.href = 'index.html';
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(scriptURL + '?action=get_users');
+                const users = await response.json();
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = '';
+                
+                users.forEach(user => {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4">
+                                <div class="font-bold text-slate-800">${user.fullName}</div>
+                                <div class="text-xs text-slate-500">${user.jobTitle} - ${user.workplace}</div>
+                            </td>
+                            <td class="p-4 text-sm text-slate-600">
+                                <div>${user.email}</div>
+                                <div class="text-xs">${user.mobile}</div>
+                            </td>
+                            <td class="p-4 font-bold text-emerald-600">${user.role}</td>
+                            <td class="p-4 flex gap-2">
+                                <select id="role_${user.email}" class="border rounded-lg px-2 py-1 text-sm bg-white">
+                                    <option value="مدخل بيانات" ${user.role === 'مدخل بيانات' ? 'selected' : ''}>مدخل بيانات</option>
+                                    <option value="مشرف" ${user.role === 'مشرف' ? 'selected' : ''}>مشرف</option>
+                                    <option value="مدير" ${user.role === 'مدير' ? 'selected' : ''}>مدير</option>
+                                </select>
+                                <button onclick="updateRole('${user.email}')" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">تحديث</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } catch(e) {
+                document.getElementById('usersTable').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-rose-500">حدث خطأ في تحميل البيانات</td></tr>';
+            }
+        }
+
+        async function updateRole(email) {
+            const newRole = document.getElementById(`role_${email}`).value;
+            let formData = new FormData();
+            formData.append('action', 'update_role');
+            formData.append('targetEmail', email);
+            formData.append('newRole', newRole);
+
+            const btn = event.target;
+            btn.innerText = '...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(scriptURL, { method: 'POST', body: formData });
+                const res = await response.json();
+                if(res.result === 'success') {
+                    alert('تم تحديث الصلاحية بنجاح');
+                    loadUsers();
+                } else {
+                    alert('حدث خطأ');
+                }
+            } catch(e) {
+                alert('فشل الاتصال');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadUsers);
+    </script>
+</body>
+</html>

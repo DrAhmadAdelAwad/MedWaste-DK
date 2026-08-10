@@ -130,6 +130,12 @@
             firstDay.setDate(1);
             document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
 
+            // 1. عرض التقارير محلياً للسرعة القصوى
+            generateReports();
+
+            const syncBadge = document.getElementById('syncBadge');
+            if(syncBadge) syncBadge.classList.remove('hidden');
+
             try {
                 const response = await fetch(scriptURL);
                 if (!response.ok) throw new Error('فشل الاتصال بالسحابة');
@@ -155,11 +161,20 @@
                 });
                 
                 localStorage.setItem('dakahlia_waste_records', JSON.stringify(cloudData));
-            } catch (error) {
-                console.error('حدث خطأ أثناء جلب البيانات:', error);
-            }
+                generateReports(); // تحديث صامت
 
-            generateReports();
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "✅ تم تحديث السجلات";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 2000);
+                }
+            } catch (error) {
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "❌ تعذر الاتصال (عرض محلي)";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
+                }
+            }
         });
 
         function resetFilters() {
@@ -404,5 +419,10 @@
             }
         });
     </script>
+    
+    <!-- رسالة المزامنة العائمة -->
+    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+        جاري تحديث القوائم من السحابة... ⏳
+    </div>
 </body>
 </html>

@@ -38,7 +38,7 @@
 
         <!-- تنبيه التخزين المحلي وأزرار التحكم -->
         <div class="bg-amber-50 border-b border-amber-200 p-3 text-amber-800 text-xs sm:text-sm flex flex-col sm:flex-row justify-between items-center px-6 gap-2">
-            <span>🛡️ نظام الحماية المحلي مفعّل: لن تضيع بياناتك حتى لو انقطع الإنترنت.</span>
+            <span>🛡️ القوائم والبيانات يتم مزامنتها تلقائياً مع السحابة لجميع المستخدمين.</span>
             <div class="flex items-center gap-3">
                 <span id="local-count" class="font-bold bg-amber-200 px-2.5 py-1 rounded-lg">محفوظ محلياً: 0</span>
                 <button type="button" onclick="toggleManagerModal()" class="bg-teal-700 hover:bg-teal-800 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow transition">
@@ -310,6 +310,11 @@
         </div>
     </div>
 
+    <!-- رسالة المزامنة العائمة -->
+    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+        جاري تحديث القوائم من السحابة... ⏳
+    </div>
+
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbwSGLsP2eWUhnaFwwL8pgSYsa4ox7eKNOI6DwtVBAY_5mcYxzotok5jc4LhUi1TPGnm/exec';
         
@@ -419,20 +424,80 @@
             ]
         };
 
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             initTreatmentUnits();
             loadCarsOptions();
             loadDriversOptions();
             updateLocalStorageCounter();
+
+            const syncBadge = document.getElementById('syncBadge');
+            if(syncBadge) syncBadge.classList.remove('hidden');
+
+            try {
+                const response = await fetch(scriptURL + '?action=get_settings');
+                const res = await response.json();
+                if (res.result === 'success' && res.data) {
+                    appData = JSON.parse(res.data);
+                    
+                    localStorage.setItem('sys_health_admins', JSON.stringify(appData.healthAdmins));
+                    localStorage.setItem('sys_cars', JSON.stringify(appData.cars));
+                    localStorage.setItem('sys_drivers', JSON.stringify(appData.drivers));
+                    localStorage.setItem('sys_gov_facilities', JSON.stringify(appData.govFacilities));
+                    localStorage.setItem('sys_priv_facilities', JSON.stringify(appData.privateFacilities));
+                    localStorage.setItem('sys_priv_companies', JSON.stringify(appData.privateCompanies));
+                    
+                    initTreatmentUnits();
+                    loadCarsOptions();
+                    loadDriversOptions();
+                    if(!document.getElementById('managerModal').classList.contains('hidden')) {
+                         renderGenericList();
+                    }
+                    if(syncBadge) {
+                        syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                        syncBadge.innerText = "✅ تم مزامنة القوائم";
+                        setTimeout(() => syncBadge.classList.add('hidden'), 2000);
+                    }
+                } else {
+                    if(syncBadge) syncBadge.classList.add('hidden');
+                }
+            } catch(e) { 
+                if(syncBadge) syncBadge.classList.add('hidden');
+            }
         });
 
-        function saveAllAppData() {
+        async function saveAllAppData() {
             localStorage.setItem('sys_health_admins', JSON.stringify(appData.healthAdmins));
             localStorage.setItem('sys_cars', JSON.stringify(appData.cars));
             localStorage.setItem('sys_drivers', JSON.stringify(appData.drivers));
             localStorage.setItem('sys_gov_facilities', JSON.stringify(appData.govFacilities));
             localStorage.setItem('sys_priv_facilities', JSON.stringify(appData.privateFacilities));
             localStorage.setItem('sys_priv_companies', JSON.stringify(appData.privateCompanies));
+
+            const syncBadge = document.getElementById('syncBadge');
+            if(syncBadge) {
+                syncBadge.className = "fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                syncBadge.innerText = "جاري الحفظ في السحابة... ⏳";
+                syncBadge.classList.remove('hidden');
+            }
+
+            let formData = new FormData();
+            formData.append('action', 'save_settings');
+            formData.append('settingsData', JSON.stringify(appData));
+            
+            try {
+                await fetch(scriptURL, { method: 'POST', body: formData });
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "✅ تم حفظ وتحديث القوائم للجميع";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
+                }
+            } catch(e) {
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "❌ فشل حفظ الإعدادات في السحابة (تم الحفظ محلياً)";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
+                }
+            }
         }
 
         function exportBackup() {
@@ -1000,7 +1065,8 @@
             currentBatch = [];
             updateBatchTable();
             form.reset();
-            dateInput.value = todayStr;
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('reportDate').value = todayStr;
             resetFacilityForm();
         });
 
@@ -1104,5 +1170,10 @@
             }
         });
     </script>
+    
+    <!-- رسالة المزامنة العائمة -->
+    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+        جاري تحديث القوائم من السحابة... ⏳
+    </div>
 </body>
 </html>

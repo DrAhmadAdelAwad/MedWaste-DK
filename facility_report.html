@@ -195,9 +195,40 @@
         let filteredRecords = [];
 
         document.addEventListener("DOMContentLoaded", async () => {
+            // تحميل محلي فوري
+            allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
+            sysAdmins = JSON.parse(localStorage.getItem('sys_health_admins') || '{}');
+            govFacilities = JSON.parse(localStorage.getItem('sys_gov_facilities') || '[]');
+            privFacilities = JSON.parse(localStorage.getItem('sys_priv_facilities') || '[]');
+            privCompanies = JSON.parse(localStorage.getItem('sys_priv_companies') || '[]');
+
+            initHealthAdminDropdown();
+            populateSubFacilitiesDropdown();
+            generateFacilityReport();
+
+            const syncBadge = document.getElementById('syncBadge');
+            if(syncBadge) syncBadge.classList.remove('hidden');
+
             try {
+                // جلب الإعدادات (لتحديث القوائم المنسدلة)
+                const settingsRes = await fetch(scriptURL + '?action=get_settings');
+                const sData = await settingsRes.json();
+                if(sData.result === 'success' && sData.data) {
+                    const cSettings = JSON.parse(sData.data);
+                    sysAdmins = cSettings.healthAdmins || {};
+                    govFacilities = cSettings.govFacilities || [];
+                    privFacilities = cSettings.privateFacilities || [];
+                    privCompanies = cSettings.privateCompanies || [];
+                    localStorage.setItem('sys_health_admins', JSON.stringify(sysAdmins));
+                    localStorage.setItem('sys_gov_facilities', JSON.stringify(govFacilities));
+                    localStorage.setItem('sys_priv_facilities', JSON.stringify(privFacilities));
+                    localStorage.setItem('sys_priv_companies', JSON.stringify(privCompanies));
+                    initHealthAdminDropdown(); 
+                    populateSubFacilitiesDropdown();
+                }
+
+                // جلب السجلات
                 const response = await fetch(scriptURL);
-                if (!response.ok) throw new Error('فشل الاتصال بالسحابة');
                 let rawData = await response.json();
                 
                 allRecords = rawData.map(record => {
@@ -220,19 +251,21 @@
                 });
                 
                 localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
+                generateFacilityReport();
+
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "✅ تم تحديث البيانات والقوائم";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 2000);
+                }
             } catch (error) {
                 console.error('حدث خطأ أثناء جلب البيانات:', error);
-                allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
+                if(syncBadge) {
+                    syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
+                    syncBadge.innerText = "❌ عرض البيانات المحلية فقط (تعذر الاتصال)";
+                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
+                }
             }
-
-            sysAdmins = JSON.parse(localStorage.getItem('sys_health_admins') || '{}');
-            govFacilities = JSON.parse(localStorage.getItem('sys_gov_facilities') || '[]');
-            privFacilities = JSON.parse(localStorage.getItem('sys_priv_facilities') || '[]');
-            privCompanies = JSON.parse(localStorage.getItem('sys_priv_companies') || '[]');
-
-            initHealthAdminDropdown();
-            populateSubFacilitiesDropdown();
-            generateFacilityReport();
         });
 
         function initHealthAdminDropdown() {
@@ -590,5 +623,10 @@
             }
         });
     </script>
+    
+    <!-- رسالة المزامنة العائمة -->
+    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+        جاري تحديث القوائم من السحابة... ⏳
+    </div>
 </body>
 </html>

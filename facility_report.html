@@ -17,7 +17,7 @@
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
 
-    <div class="max-w-6xl mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
         
         <!-- ترويسة الموقع الموحدة مع التنقل -->
         <div class="no-print bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -119,8 +119,8 @@
                 <h3 id="statVisits" class="text-2xl font-black text-slate-800">0</h3>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-amber-500">
-                <p class="text-xs text-slate-500 font-semibold mb-1">سعر الكيلوجرام المطبق</p>
-                <h3 id="statRate" class="text-2xl font-black text-amber-700">0 <span class="text-xs text-slate-500">ج.م/كجم</span></h3>
+                <p class="text-xs text-slate-500 font-semibold mb-1">إجمالي فروق الحد الأدنى</p>
+                <h3 id="statMinDiff" class="text-2xl font-black text-amber-700">0 <span class="text-xs text-slate-500">جنية</span></h3>
             </div>
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-r-4 border-r-blue-600 bg-blue-50/20">
                 <p class="text-xs text-blue-900 font-bold mb-1">المبلغ الإجمالي المستحق</p>
@@ -129,7 +129,7 @@
         </div>
 
         <!-- جدول تفاصيل الحركة والمطالبة -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6 print-card space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto p-6 print-card space-y-4">
             <div class="flex justify-between items-center border-b pb-4">
                 <div>
                     <h2 class="text-lg font-bold text-slate-800" id="reportTitle">كشف حركة ومطالبة رفع النفايات الطبية</h2>
@@ -141,35 +141,37 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-right border-collapse text-xs">
-                    <thead>
-                        <tr class="bg-slate-100 text-slate-700 border-b">
-                            <th class="p-2.5">م</th>
-                            <th class="p-2.5">تاريخ البلاغ</th>
-                            <th class="p-2.5">اسم المنشأة / الوحدة</th>
-                            <th class="p-2.5">التصنيف</th>
-                            <th class="p-2.5">وحدة المعالجة</th>
-                            <th class="p-2.5 text-center">الوزن (كجم)</th>
-                            <th class="p-2.5 text-center">السعر/كجم</th>
-                            <th class="p-2.5 text-center">بواسطة</th>
-                            <th class="p-2.5 text-center">الإجمالي (جنية)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reportTableBody" class="divide-y divide-slate-100">
-                        <!-- البيانات المفلترة تظهر هنا -->
-                    </tbody>
-                    <tfoot class="bg-slate-50 font-bold text-slate-800 border-t">
-                        <tr>
-                            <td colspan="5" class="p-3 text-left">الإجمالي العام:</td>
-                            <td id="footTotalWeight" class="p-3 text-center text-emerald-700">0 كجم</td>
-                            <td class="p-3 text-center">-</td>
-                            <td class="p-3 text-center">-</td>
-                            <td id="footTotalAmount" class="p-3 text-center text-blue-700">0 جنية</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+            <table class="w-full text-right border-collapse text-[11px] sm:text-xs">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-700 border-b">
+                        <th class="p-2.5">م</th>
+                        <th class="p-2.5">تاريخ البلاغ</th>
+                        <th class="p-2.5">اسم المنشأة / الوحدة</th>
+                        <th class="p-2.5">التصنيف</th>
+                        <th class="p-2.5">وحدة المعالجة</th>
+                        <th class="p-2.5 text-center">الوزن (كجم)</th>
+                        <th class="p-2.5 text-center">نقل (ج)</th>
+                        <th class="p-2.5 text-center">معالجة (ج)</th>
+                        <th class="p-2.5 text-center">حد أدنى (ج)</th>
+                        <th class="p-2.5 text-center">الإجمالي (ج)</th>
+                        <th class="p-2.5 text-center">بواسطة</th>
+                    </tr>
+                </thead>
+                <tbody id="reportTableBody" class="divide-y divide-slate-100">
+                    <!-- البيانات المفلترة تظهر هنا -->
+                </tbody>
+                <tfoot class="bg-slate-50 font-bold text-slate-800 border-t">
+                    <tr>
+                        <td colspan="5" class="p-3 text-left">الإجمالي العام:</td>
+                        <td id="footTotalWeight" class="p-3 text-center text-emerald-700">0 كجم</td>
+                        <td id="footTotalTrans" class="p-3 text-center text-slate-600">0</td>
+                        <td id="footTotalTreat" class="p-3 text-center text-slate-600">0</td>
+                        <td id="footTotalMin" class="p-3 text-center text-amber-700">0</td>
+                        <td id="footTotalAmount" class="p-3 text-center text-blue-700">0 جنية</td>
+                        <td class="p-3 text-center">-</td>
+                    </tr>
+                </tfoot>
+            </table>
 
             <div id="noRecordsMsg" class="hidden text-center py-8 text-slate-400 text-xs">
                 لا توجد سجلات مطابقة لنطاق الاستعلام أو الفترة المحددة.
@@ -320,11 +322,56 @@
             generateFacilityReport();
         }
 
-        function getRateForFacility(mainType) {
-            if (mainType === 'منشأت خاصة' || mainType === 'شركات خاصة') {
-                return 35;
+        // محرك الحسابات المالي الجديد
+        function calculateFinancials(record) {
+            let w = record.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(record.wasteWeight || 0);
+            w = isNaN(w) ? 0 : w;
+
+            let transRate = 0;
+            let treatRate = 0;
+
+            if (record.facilityMainType === 'منشأت خاصة') {
+                transRate = 9;
+                treatRate = 26;
+            } else if (record.facilityMainType === 'شركات خاصة') {
+                transRate = 0;
+                treatRate = 26;
+            } else {
+                // إدارات صحية ومنشأت حكومية
+                transRate = 5;
+                treatRate = 10;
             }
-            return 15;
+
+            let transCost = w * transRate;
+            let treatCost = w * treatRate;
+            let calculatedTotal = transCost + treatCost;
+
+            let minDiff = 0;
+            let finalTotal = 0;
+
+            if (record.visitType === 'زيارة فقط بدون نقل') {
+                minDiff = 60;
+                finalTotal = 60;
+                transCost = 0;
+                treatCost = 0;
+            } else {
+                if (calculatedTotal < 60 && w > 0) {
+                    minDiff = 60 - calculatedTotal;
+                    finalTotal = 60;
+                } else if (w > 0) {
+                    finalTotal = calculatedTotal;
+                } else {
+                    finalTotal = 0;
+                }
+            }
+
+            return {
+                weight: w,
+                transCost: transCost,
+                treatCost: treatCost,
+                minDiff: minDiff,
+                finalTotal: finalTotal
+            };
         }
 
         function generateFacilityReport() {
@@ -361,8 +408,10 @@
             tbody.innerHTML = '';
 
             let totalWeight = 0;
+            let totalTrans = 0;
+            let totalTreat = 0;
+            let totalMinDiff = 0;
             let totalAmount = 0;
-            let ratesArr = new Set();
 
             if (filteredRecords.length === 0) {
                 noRecords.classList.remove('hidden');
@@ -371,16 +420,13 @@
             }
 
             filteredRecords.forEach((r, idx) => {
-                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
-                w = isNaN(w) ? 0 : w;
+                let fin = calculateFinancials(r);
 
-                let rate = getRateForFacility(r.facilityMainType);
-                ratesArr.add(rate);
-
-                let cost = w * rate;
-
-                totalWeight += w;
-                totalAmount += cost;
+                totalWeight += fin.weight;
+                totalTrans += fin.transCost;
+                totalTreat += fin.treatCost;
+                totalMinDiff += fin.minDiff;
+                totalAmount += fin.finalTotal;
 
                 let nameDisplay = r.subFacilityName || r.facilityName || '-';
 
@@ -389,12 +435,14 @@
                         <td class="p-2.5 font-semibold text-slate-500">${idx + 1}</td>
                         <td class="p-2.5 font-medium text-slate-800">${r.reportDate || '-'}</td>
                         <td class="p-2.5 font-bold text-slate-800">${nameDisplay}</td>
-                        <td class="p-2.5"><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${rate === 35 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${r.facilityMainType || 'حكومي/إدارة'}</span></td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${r.facilityMainType === 'منشأت خاصة' || r.facilityMainType === 'شركات خاصة' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">${r.facilityMainType || 'حكومي/إدارة'}</span></td>
                         <td class="p-2.5 text-slate-600">${r.treatmentUnit || '-'}</td>
-                        <td class="p-2.5 text-center font-bold text-emerald-700">${w.toFixed(2)}</td>
-                        <td class="p-2.5 text-center font-semibold text-slate-600">${rate} ج.م</td>
+                        <td class="p-2.5 text-center font-bold text-emerald-700">${fin.weight > 0 ? fin.weight.toFixed(2) : '-'}</td>
+                        <td class="p-2.5 text-center font-semibold text-slate-600">${fin.transCost > 0 ? fin.transCost.toFixed(2) : '-'}</td>
+                        <td class="p-2.5 text-center font-semibold text-slate-600">${fin.treatCost > 0 ? fin.treatCost.toFixed(2) : '-'}</td>
+                        <td class="p-2.5 text-center font-semibold text-amber-600">${fin.minDiff > 0 ? fin.minDiff.toFixed(2) : '-'}</td>
+                        <td class="p-2.5 text-center font-bold text-blue-700">${fin.finalTotal.toFixed(2)}</td>
                         <td class="p-2.5 text-center text-[10px] font-bold text-slate-500">${r.createdBy || 'غير مسجل'}</td>
-                        <td class="p-2.5 text-center font-bold text-blue-700">${cost.toFixed(2)}</td>
                     </tr>
                 `;
                 tbody.innerHTML += tr;
@@ -402,19 +450,13 @@
 
             document.getElementById('statWeight').innerText = `${totalWeight.toFixed(2)} كجم`;
             document.getElementById('statVisits').innerText = filteredRecords.length;
+            document.getElementById('statMinDiff').innerText = `${totalMinDiff.toFixed(2)} جنية`;
             document.getElementById('statTotalAmount').innerText = `${totalAmount.toFixed(2)} جنية`;
 
-            let activeRateDisplay = 'مختلط';
-            if (ratesArr.size === 1) {
-                activeRateDisplay = `${Array.from(ratesArr)[0]} ج.م`;
-            } else if (ratesArr.size > 1) {
-                activeRateDisplay = 'مختلط (15 / 35)';
-            } else {
-                activeRateDisplay = '0';
-            }
-            document.getElementById('statRate').innerText = activeRateDisplay;
-
             document.getElementById('footTotalWeight').innerText = `${totalWeight.toFixed(2)} كجم`;
+            document.getElementById('footTotalTrans').innerText = `${totalTrans.toFixed(2)}`;
+            document.getElementById('footTotalTreat').innerText = `${totalTreat.toFixed(2)}`;
+            document.getElementById('footTotalMin').innerText = `${totalMinDiff.toFixed(2)}`;
             document.getElementById('footTotalAmount').innerText = `${totalAmount.toFixed(2)} جنية`;
 
             const mainType = document.getElementById('facilityMainType').value;
@@ -444,9 +486,7 @@
             }
 
             const excelRows = filteredRecords.map((r, i) => {
-                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
-                w = isNaN(w) ? 0 : w;
-                let rate = getRateForFacility(r.facilityMainType);
+                let fin = calculateFinancials(r);
                 return {
                     "م": i + 1,
                     "تاريخ البلاغ": r.reportDate || '',
@@ -455,12 +495,14 @@
                     "اسم المنشأة / الوحدة": r.subFacilityName || r.facilityName || '',
                     "وحدة المعالجة": r.treatmentUnit || '',
                     "طبيعة الزيارة": r.visitType || '',
-                    "الوزن (كجم)": w,
-                    "السعر/كجم (جنية)": rate,
-                    "بواسطة": r.createdBy || 'غير مسجل',
-                    "المبلغ المستحق (جنية)": w * rate,
+                    "الوزن (كجم)": fin.weight,
+                    "تكلفة النقل (جنية)": fin.transCost,
+                    "تكلفة المعالجة (جنية)": fin.treatCost,
+                    "فرق الحد الأدنى (جنية)": fin.minDiff,
+                    "المبلغ الإجمالي المستحق (جنية)": fin.finalTotal,
                     "اسم السائق": r.driverName || '',
                     "رقم السيارة": r.carNumber || '',
+                    "بواسطة": r.createdBy || 'غير مسجل',
                     "توقيت التسجيل": r.timestamp || ''
                 };
             });

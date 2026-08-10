@@ -454,8 +454,8 @@
                     }
                     if(syncBadge) {
                         syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                        syncBadge.innerText = "✅ تم مزامنة القوائم";
-                        setTimeout(() => syncBadge.classList.add('hidden'), 2000);
+                        syncBadge.innerText = "✅ تم مزامنة القوائم والسيارات والسائقين";
+                        setTimeout(() => syncBadge.classList.add('hidden'), 2500);
                     }
                 } else {
                     if(syncBadge) syncBadge.classList.add('hidden');
@@ -476,7 +476,7 @@
             const syncBadge = document.getElementById('syncBadge');
             if(syncBadge) {
                 syncBadge.className = "fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                syncBadge.innerText = "جاري الحفظ في السحابة... ⏳";
+                syncBadge.innerText = "جاري حفظ القوائم (سيارات، سائقين، منشآت) في السحابة... ⏳";
                 syncBadge.classList.remove('hidden');
             }
 
@@ -488,13 +488,13 @@
                 await fetch(scriptURL, { method: 'POST', body: formData });
                 if(syncBadge) {
                     syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "✅ تم حفظ وتحديث القوائم للجميع";
+                    syncBadge.innerText = "✅ تم تحديث وتعميم القوائم للجميع";
                     setTimeout(() => syncBadge.classList.add('hidden'), 3000);
                 }
             } catch(e) {
                 if(syncBadge) {
                     syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "❌ فشل حفظ الإعدادات في السحابة (تم الحفظ محلياً)";
+                    syncBadge.innerText = "❌ فشل الحفظ بالسحابة (تم محلياً فقط)";
                     setTimeout(() => syncBadge.classList.add('hidden'), 3000);
                 }
             }

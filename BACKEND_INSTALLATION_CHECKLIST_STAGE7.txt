@@ -1,0 +1,65 @@
+MedWaste DK — Stage 7 Backend Installation Checklist
+====================================================
+
+IMPORTANT:
+Do not copy Code.gs only. ALL files below must exist inside the SAME Google Apps Script project.
+
+Required backend files:
+
+1.  Auth.gs
+2.  Cache.gs                         [NEW Stage 7]
+3.  Code.gs
+4.  Concurrency.gs                   [NEW Stage 7]
+5.  Config.gs
+6.  Contracts.gs
+7.  Idempotency.gs                   [NEW Stage 7]
+8.  IdempotencyRepository.gs         [NEW Stage 7]
+9.  Logging.gs
+10. RecordMapper.gs
+11. RecordRepository.gs
+12. Records.gs
+13. Router.gs
+14. Security.gs
+15. SelfTests.gs
+16. SessionRepository.gs
+17. Sessions.gs
+18. Settings.gs
+19. SettingsRepository.gs
+20. Sheets.gs
+21. UserMapper.gs
+22. UserRepository.gs
+23. Users.gs
+24. Utils.gs
+25. Validators.gs
+
+After copying/updating ALL files:
+
+A) Save the Apps Script project.
+B) Run: verifyBackendInstallation()
+   Expected:
+   result = success
+   missing = []
+
+C) Run: setupSystem()
+   This creates/validates system sheets, including hidden sheet: _الطلبات
+
+D) Run: runSelfTests()
+   The structured result is printed automatically in the Apps Script Execution log.
+   Expected for Stage 7:
+   result = success
+   passed = 13
+   failed = 0
+
+E) Deploy > Manage deployments > Edit > New version > Deploy.
+
+F) Open:
+   YOUR_EXEC_URL?action=health
+
+Expected key values:
+   result: success
+   version: 7.0
+   appVersion: 7.0
+   contractVersion: 1.2
+   environment: production
+
+G) Deploy the Stage 7 frontend files as well. Frontend 7.0 and backend contract 1.2 should be deployed together.

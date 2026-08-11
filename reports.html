@@ -1,426 +1,141 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+
+<html dir="rtl" lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة المؤشرات والتقارير - منظومة النفايات الطبية</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    </style>
-    <script src="app-config.js"></script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>لوحة المؤشرات والتقارير - منظومة النفايات الطبية</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link href="assets/css/base.css" rel="stylesheet"/>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
-
-    <div class="max-w-7xl mx-auto space-y-6">
-        
-        <!-- ترويسة الموقع الموحدة مع التنقل -->
-        <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="text-center sm:text-right">
-                <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start">
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- ترويسة الموقع الموحدة مع التنقل -->
+<div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+<div class="text-center sm:text-right">
+<h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-2 justify-center sm:justify-start">
                     📊 لوحة المؤشرات والتقارير
                 </h1>
-                <p class="text-emerald-100 mt-2 text-sm">تحليل بيانات النفايات الطبية لمديرية الشؤون الصحية بالدقهلية</p>
-            </div>
-            <!-- شريط التنقل الموحد -->
-            <div class="flex flex-wrap gap-2 justify-center">
-                <a href="index.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+<p class="text-emerald-100 mt-2 text-sm">تحليل بيانات النفايات الطبية لمديرية الشؤون الصحية بالدقهلية</p>
+</div>
+<!-- شريط التنقل الموحد -->
+<div class="flex flex-wrap gap-2 justify-center">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm" href="index.html">
                     ➕ تسجيل جديد
                 </a>
-                <a href="view.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm" href="view.html">
                     📋 سجل الرحلات
                 </a>
-                <a href="reports.html" class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition">
+<a class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition" href="reports.html">
                     📊 لوحة التقارير
                 </a>
-                <a href="facility_report.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl text-xs font-semibold transition backdrop-blur-sm" href="facility_report.html">
                     🏛️ بيان المنشآت
                 </a>
-            </div>
-        </div>
-
-        <!-- شريط الفلترة حسب التاريخ وأزرار التحكم -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
-            <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                <div class="font-bold text-slate-700 text-sm whitespace-nowrap">📅 تصفية البيانات بالفترة:</div>
-                <div class="flex items-center gap-2 w-full sm:w-auto">
-                    <input type="date" id="startDate" class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto">
-                    <span class="text-slate-500 text-sm">إلى</span>
-                    <input type="date" id="endDate" class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto">
-                </div>
-                <div class="flex gap-2 w-full sm:w-auto">
-                    <button onclick="generateReports()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto">
+</div>
+</div>
+<!-- شريط الفلترة حسب التاريخ وأزرار التحكم -->
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row items-center justify-between gap-4">
+<div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+<div class="font-bold text-slate-700 text-sm whitespace-nowrap">📅 تصفية البيانات بالفترة:</div>
+<div class="flex items-center gap-2 w-full sm:w-auto">
+<input class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto" id="startDate" type="date"/>
+<span class="text-slate-500 text-sm">إلى</span>
+<input class="px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm w-full sm:w-auto" id="endDate" type="date"/>
+</div>
+<div class="flex gap-2 w-full sm:w-auto">
+<button class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto" id="generateReportsControl">
                         تطبيق الفلتر
                     </button>
-                    <button onclick="resetFilters()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto">
+<button class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2 rounded-xl text-sm font-bold transition w-full sm:w-auto" id="resetFiltersControl">
                         الكل
                     </button>
-                </div>
-            </div>
-
-            <button onclick="exportToExcel()" class="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 w-full lg:w-auto shadow-sm">
+</div>
+</div>
+<button class="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 w-full lg:w-auto shadow-sm" id="exportToExcelControl">
                 📥 تصدير إلى Excel
             </button>
-        </div>
-
-        <!-- بطاقات الإحصائيات (KPIs) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-emerald-500">
-                <div>
-                    <p class="text-sm text-slate-500 font-semibold mb-1">إجمالي وزن النفايات المرفوعة</p>
-                    <h3 id="totalWeight" class="text-3xl font-black text-slate-800">0 <span class="text-lg text-slate-500 font-normal">كجم</span></h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-2xl">
+</div>
+<!-- بطاقات الإحصائيات (KPIs) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-emerald-500">
+<div>
+<p class="text-sm text-slate-500 font-semibold mb-1">إجمالي وزن النفايات المرفوعة</p>
+<h3 class="text-3xl font-black text-slate-800" id="totalWeight">0 <span class="text-lg text-slate-500 font-normal">كجم</span></h3>
+</div>
+<div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-2xl">
                     ⚖️
                 </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-teal-500">
-                <div>
-                    <p class="text-sm text-slate-500 font-semibold mb-1">إجمالي المنشآت المزارة</p>
-                    <h3 id="totalFacilities" class="text-3xl font-black text-slate-800">0</h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-2xl">
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-teal-500">
+<div>
+<p class="text-sm text-slate-500 font-semibold mb-1">إجمالي المنشآت المزارة</p>
+<h3 class="text-3xl font-black text-slate-800" id="totalFacilities">0</h3>
+</div>
+<div class="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 text-2xl">
                     🏥
                 </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-blue-500">
-                <div>
-                    <p class="text-sm text-slate-500 font-semibold mb-1">عدد رحلات خطوط السير</p>
-                    <h3 id="totalTrips" class="text-3xl font-black text-slate-800">0</h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl">
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between border-b-4 border-b-blue-500">
+<div>
+<p class="text-sm text-slate-500 font-semibold mb-1">عدد رحلات خطوط السير</p>
+<h3 class="text-3xl font-black text-slate-800" id="totalTrips">0</h3>
+</div>
+<div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-2xl">
                     🚚
                 </div>
-            </div>
-        </div>
-
-        <!-- منطقة الرسوم البيانية -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="font-bold text-slate-700 mb-4 border-b pb-2">الأوزان الموردة لكل وحدة معالجة (كجم)</h3>
-                <div class="relative h-72">
-                    <canvas id="treatmentUnitsChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 class="font-bold text-slate-700 mb-4 border-b pb-2">توزيع الزيارات حسب نوع المنشأة</h3>
-                <div class="relative h-72 flex justify-center">
-                    <canvas id="facilitiesTypeChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <script>
-let unitsChartInstance = null;
-        let typesChartInstance = null;
-        let currentFilteredRecords = [];
-
-        document.addEventListener("DOMContentLoaded", async () => {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('endDate').value = today;
-            
-            const firstDay = new Date();
-            firstDay.setDate(1);
-            document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
-
-            // 1. عرض التقارير محلياً للسرعة القصوى
-            generateReports();
-
-            const syncBadge = document.getElementById('syncBadge');
-            if(syncBadge) syncBadge.classList.remove('hidden');
-
-            try {
-                const res = await apiGet('get_records');
-                let rawData = res.data || [];
-                const localSnapshot = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
-                
-                const cloudData = rawData.map(record => {
-                    if (record.reportDate) {
-                        let d = new Date(record.reportDate);
-                        if (!isNaN(d)) {
-                            let yyyy = d.getFullYear();
-                            let mm = String(d.getMonth() + 1).padStart(2, '0');
-                            let dd = String(d.getDate()).padStart(2, '0');
-                            record.reportDate = `${yyyy}-${mm}-${dd}`;
-                        }
-                    }
-                    if (record.timestamp) {
-                        let t = new Date(record.timestamp);
-                        if (!isNaN(t)) {
-                            record.timestamp = t.toLocaleString('ar-EG', { hour12: true });
-                        }
-                    }
-                    return record;
-                });
-                
-                const mergedData = mergeCloudWithLocal(cloudData, localSnapshot);
-                localStorage.setItem('dakahlia_waste_records', JSON.stringify(mergedData));
-                generateReports(); // تحديث صامت
-
-                if(syncBadge) {
-                    syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "✅ تم تحديث السجلات";
-                    setTimeout(() => syncBadge.classList.add('hidden'), 2000);
-                }
-            } catch (error) {
-                if(syncBadge) {
-                    syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "❌ تعذر الاتصال (عرض محلي)";
-                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
-                }
-            }
-        });
-
-        function resetFilters() {
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            generateReports();
-        }
-
-        function generateReports() {
-            const allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
-            
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-
-            currentFilteredRecords = allRecords.filter(record => {
-                if (!record.reportDate) return false;
-                if (startDate && record.reportDate < startDate) return false;
-                if (endDate && record.reportDate > endDate) return false;
-                return true;
-            });
-
-            calculateKPIs(currentFilteredRecords);
-            drawCharts(currentFilteredRecords);
-        }
-
-        function calculateKPIs(records) {
-            let totalWeight = 0;
-            let tripsSet = new Set();
-            
-            records.forEach(r => {
-                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
-                totalWeight += isNaN(w) ? 0 : w;
-
-                let tripKey = `${r.reportDate}_${r.treatmentUnit}_${r.driverName}_${r.carNumber}`;
-                tripsSet.add(tripKey);
-            });
-
-            animateValue("totalWeight", totalWeight);
-            animateValue("totalFacilities", records.length);
-            animateValue("totalTrips", tripsSet.size);
-        }
-
-        function drawCharts(records) {
-            const unitsData = {};
-            const typesData = {};
-
-            records.forEach(r => {
-                let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
-                w = isNaN(w) ? 0 : w;
-                
-                if (r.treatmentUnit) {
-                    unitsData[r.treatmentUnit] = (unitsData[r.treatmentUnit] || 0) + w;
-                }
-
-                if (r.facilityMainType) {
-                    typesData[r.facilityMainType] = (typesData[r.facilityMainType] || 0) + 1;
-                }
-            });
-
-            const unitsCtx = document.getElementById('treatmentUnitsChart').getContext('2d');
-            if (unitsChartInstance) unitsChartInstance.destroy();
-            
-            unitsChartInstance = new Chart(unitsCtx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(unitsData),
-                    datasets: [{
-                        label: 'إجمالي الوزن (كجم)',
-                        data: Object.values(unitsData),
-                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                        borderColor: 'rgba(5, 150, 105, 1)',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'الوزن (كجم)' } }
-                    }
-                }
-            });
-
-            const typesCtx = document.getElementById('facilitiesTypeChart').getContext('2d');
-            if (typesChartInstance) typesChartInstance.destroy();
-
-            typesChartInstance = new Chart(typesCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(typesData),
-                    datasets: [{
-                        data: Object.values(typesData),
-                        backgroundColor: [
-                            '#0ea5e9',
-                            '#f59e0b',
-                            '#10b981',
-                            '#8b5cf6',
-                            '#64748b'
-                        ],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { font: { family: 'Segoe UI' } } }
-                    }
-                }
-            });
-        }
-
-        function animateValue(id, end, duration = 1000) {
-            const obj = document.getElementById(id);
-            const start = 0;
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                const currentVal = progress * (end - start) + start;
-                obj.innerHTML = currentVal.toLocaleString('en-US', {maximumFractionDigits: 1}) + (id === 'totalWeight' ? ' <span class="text-lg text-slate-500 font-normal">كجم</span>' : '');
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
-            };
-            window.requestAnimationFrame(step);
-        }
-
-        function exportToExcel() {
-            if (!currentFilteredRecords || currentFilteredRecords.length === 0) {
-                alert('لا توجد بيانات متاحة للتصدير في الفترة المحددة.');
-                return;
-            }
-
-            const formattedData = currentFilteredRecords.map((item, index) => ({
-                "م": index + 1,
-                "تاريخ البلاغ": item.reportDate || '',
-                "وحدة المعالجة": item.treatmentUnit || '',
-                "اسم السائق": item.driverName || '',
-                "رقم السيارة": item.carNumber || '',
-                "نوع المنشأة الرئيسية": item.facilityMainType || '',
-                "الإدارة الصحية": item.healthAdmin || '',
-                "اسم المنشأة / الوحدة": item.subFacilityName || item.facilityName || '',
-                "طبيعة الزيارة": item.visitType || '',
-                "الوزن المسجل": item.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(item.wasteWeight || 0),
-                "وحدة القياس": item.visitType === 'زيارة فقط بدون نقل' ? '-' : (item.weightUnit || 'كيلوجرام'),
-                "تاريخ وقت التسجيل": item.timestamp || ''
-            }));
-
-            const worksheet = XLSX.utils.json_to_sheet(formattedData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "تقرير النفايات الطبية");
-
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            let fileName = 'تقرير_النفايات_الطبية';
-            if (startDate || endDate) {
-                fileName += `_${startDate || 'البداية'}_إلى_${endDate || 'النهاية'}`;
-            }
-            fileName += '.xlsx';
-
-            XLSX.writeFile(workbook, fileName);
-        }
-    </script>
-    
-    <!-- طبقة الحماية وتوزيع الصلاحيات -->
-    <script>
-        // 1. التحقق من تسجيل الدخول
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (!currentUser) {
-            window.location.href = 'login.html';
-        }
-
-        // 2. التحقق من صلاحية الوصول للصفحة الحالية
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        const restrictedPages = ['view.html', 'reports.html', 'facility_report.html'];
-        
-        if (currentUser && currentUser.role === 'مدخل بيانات' && restrictedPages.some(p => currentPage.includes(p))) {
-            alert('عفواً، صلاحيتك (مدخل بيانات) لا تسمح بالوصول لهذه الصفحة.');
-            window.location.href = 'index.html';
-        }
-
-        // 3. تطبيق قيود وتعديلات الواجهة بعد التحميل
-        window.addEventListener('DOMContentLoaded', () => {
-            if (!currentUser) return;
-
-            // أ. تعديل شريط التنقل (إضافة المستخدم، خروج، ولوحة المدير)
-            const navContainer = document.querySelector('.flex.flex-wrap.gap-2.justify-center');
-            if (navContainer) {
-                // إخفاء روابط التقارير لمدخل البيانات
-                if (currentUser.role === 'مدخل بيانات') {
-                    const links = navContainer.querySelectorAll('a');
-                    links.forEach(link => {
-                        if(!link.href.includes('index.html')) link.style.display = 'none';
-                    });
-                }
-
-                // زر الإدارة للمدير فقط
-                if (currentUser.role === 'مدير') {
-                    const adminBtn = document.createElement('a');
-                    adminBtn.href = 'admin_users.html';
-                    adminBtn.className = 'bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
-                    adminBtn.innerText = '⚙️ لوحة المستخدمين';
-                    navContainer.appendChild(adminBtn);
-                }
-
-                // رسالة الترحيب
-                const userBadge = document.createElement('span');
-                userBadge.className = 'bg-white/20 text-white px-3.5 py-2 rounded-xl font-semibold text-xs border border-white/30 backdrop-blur-sm flex items-center';
-                userBadge.innerText = `👤 ${currentUser.fullName} (${currentUser.role})`;
-                navContainer.appendChild(userBadge);
-
-                // زر تسجيل الخروج
-                const logoutBtn = document.createElement('button');
-                logoutBtn.type = 'button';
-                logoutBtn.onclick = performLogout;
-                logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
-                logoutBtn.innerText = '🚪 خروج';
-                navContainer.appendChild(logoutBtn);
-            }
-
-            // ب. حجب صلاحيات الحذف والتعديل لغير المدير (للمشرفين ومدخلي البيانات)
-            if (currentUser.role !== 'مدير') {
-                // إخفاء زر "مسح الذاكرة المحلية"
-                const clearBtn = document.querySelector('button[onclick="clearLocalStorage()"]');
-                if (clearBtn) clearBtn.style.display = 'none';
-
-                // إخفاء زر "إدارة القوائم والنسخ الاحتياطي"
-                const managerBtn = document.querySelector('button[onclick="toggleManagerModal()"]');
-                if (managerBtn) managerBtn.style.display = 'none';
-
-                // إخفاء أزرار "حذف الرحلة" في الجدول بشكل جذري (حتى بعد البحث والفلترة)
-                const style = document.createElement('style');
-                style.innerHTML = `button[onclick^="deleteTrip"] { display: none !important; }`;
-                document.head.appendChild(style);
-            }
-        });
-    </script>
-    
-    <!-- رسالة المزامنة العائمة -->
-    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+</div>
+</div>
+<!-- منطقة الرسوم البيانية -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+<h3 class="font-bold text-slate-700 mb-4 border-b pb-2">الأوزان الموردة لكل وحدة معالجة (كجم)</h3>
+<div class="relative h-72">
+<canvas id="treatmentUnitsChart"></canvas>
+</div>
+</div>
+<div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+<h3 class="font-bold text-slate-700 mb-4 border-b pb-2">توزيع الزيارات حسب نوع المنشأة</h3>
+<div class="relative h-72 flex justify-center">
+<canvas id="facilitiesTypeChart"></canvas>
+</div>
+</div>
+</div>
+</div>
+<!-- طبقة الحماية وتوزيع الصلاحيات -->
+<!-- رسالة المزامنة العائمة -->
+<div class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden" id="syncBadge">
         جاري تحديث القوائم من السحابة... ⏳
     </div>
+
+<script src="assets/js/core/namespace.js"></script>
+<script src="assets/js/config/app-config.js"></script>
+<script src="assets/js/core/contracts.js"></script>
+<script src="assets/js/core/logger.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/session.js"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/errors.js"></script>
+<script src="assets/js/core/validators.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/domain/record.entity.js"></script>
+<script src="assets/js/domain/trip.entity.js"></script>
+<script src="assets/js/domain/user.entity.js"></script>
+<script src="assets/js/domain/settings.entity.js"></script>
+<script src="assets/js/data/mappers/record.mapper.js"></script>
+<script src="assets/js/data/mappers/user.mapper.js"></script>
+<script src="assets/js/data/mappers/settings.mapper.js"></script>
+<script src="assets/js/data/repositories/records.repository.js"></script>
+<script src="assets/js/data/repositories/auth.repository.js"></script>
+<script src="assets/js/data/repositories/settings.repository.js"></script>
+<script src="assets/js/data/repositories/users.repository.js"></script>
+<script src="assets/js/core/diagnostics.js"></script>
+<script src="assets/js/core/ui.js"></script>
+<script src="assets/js/features/auth/auth.service.js"></script>
+<script src="assets/js/features/records/records.service.js"></script>
+<script src="assets/js/common/access-control.js"></script>
+<script src="assets/js/pages/reports.js"></script>
 </body>
 </html>

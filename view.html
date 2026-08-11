@@ -1,388 +1,130 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+
+<html dir="rtl" lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سجلات الرحلات المسجلة - منظومة النفايات الطبية</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    </style>
-    <script src="app-config.js"></script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>سجلات الرحلات المسجلة - منظومة النفايات الطبية</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="assets/css/base.css" rel="stylesheet"/>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
-
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
-        
-        <!-- ترويسة الموقع الموحدة مع التنقل -->
-        <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="text-center sm:text-right">
-                <h1 class="text-2xl sm:text-3xl font-bold">سجلات الرحلات المسجلة</h1>
-                <p class="text-emerald-100 mt-1 text-sm">مديرية الشؤون الصحية بالدقهلية - ملخص رحلات خطوط السير</p>
-            </div>
-            <!-- شريط التنقل الموحد -->
-            <div class="flex flex-wrap gap-2 justify-center">
-                <a href="index.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm">
+<div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+<!-- ترويسة الموقع الموحدة مع التنقل -->
+<div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+<div class="text-center sm:text-right">
+<h1 class="text-2xl sm:text-3xl font-bold">سجلات الرحلات المسجلة</h1>
+<p class="text-emerald-100 mt-1 text-sm">مديرية الشؤون الصحية بالدقهلية - ملخص رحلات خطوط السير</p>
+</div>
+<!-- شريط التنقل الموحد -->
+<div class="flex flex-wrap gap-2 justify-center">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm" href="index.html">
                     ➕ تسجيل جديد
                 </a>
-                <a href="view.html" class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition">
+<a class="bg-white text-emerald-950 px-3.5 py-2 rounded-xl font-bold text-xs shadow transition" href="view.html">
                     📋 سجل الرحلات
                 </a>
-                <a href="reports.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm" href="reports.html">
                     📊 لوحة التقارير
                 </a>
-                <a href="facility_report.html" class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm">
+<a class="bg-white/15 hover:bg-white/25 border border-white/30 text-white px-3.5 py-2 rounded-xl font-semibold text-xs transition backdrop-blur-sm" href="facility_report.html">
                     🏛️ بيان المنشآت
                 </a>
-            </div>
-        </div>
-
-        <!-- شريط البحث وأدوات التحكم -->
-        <div class="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="w-full sm:w-1/3">
-                <input type="text" id="searchInput" placeholder="بحث بتاريخ البلاغ، السائق، أو وحدة المعالجة..." 
-                       onkeyup="filterTrips()"
-                       class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white">
-            </div>
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <span id="tripsCountBadge" class="bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-xl text-xs">إجمالي الرحلات: 0</span>
-                <button onclick="clearLocalStorage()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-xl text-xs font-bold transition">
+</div>
+</div>
+<!-- شريط البحث وأدوات التحكم -->
+<div class="p-6 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+<div class="w-full sm:w-1/3">
+<input class="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white" id="searchInput" placeholder="بحث بتاريخ البلاغ، السائق، أو وحدة المعالجة..." type="text"/>
+</div>
+<div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+<span class="bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-xl text-xs" id="tripsCountBadge">إجمالي الرحلات: 0</span>
+<button class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-2 rounded-xl text-xs font-bold transition" id="clearLocalStorageButton">
                     🗑️ مسح الذاكرة المحلية
                 </button>
-            </div>
-        </div>
-
-        <!-- جدول ملخص الرحلات -->
-        <div class="overflow-x-auto p-6">
-            <table class="w-full text-right border-collapse">
-                <thead>
-                    <tr class="bg-slate-100 text-slate-700 text-xs sm:text-sm border-b border-slate-200">
-                        <th class="p-3 rounded-r-xl">تاريخ البلاغ</th>
-                        <th class="p-3">وحدة المعالجة</th>
-                        <th class="p-3">السائق</th>
-                        <th class="p-3">رقم السيارة</th>
-                        <th class="p-3 text-center">عدد المنشآت</th>
-                        <th class="p-3 text-center">إجمالي الوزن (كجم)</th>
-                        <th class="p-3 text-center">بواسطة</th>
-                        <th class="p-3 text-center rounded-l-xl">الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody id="tripsTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
-                    <!-- البيانات تظهر هنا ديناميكياً -->
-                </tbody>
-            </table>
-            
-            <div id="noDataMessage" class="hidden text-center py-12 text-slate-400 text-sm">
+</div>
+</div>
+<!-- جدول ملخص الرحلات -->
+<div class="overflow-x-auto p-6">
+<table class="w-full text-right border-collapse">
+<thead>
+<tr class="bg-slate-100 text-slate-700 text-xs sm:text-sm border-b border-slate-200">
+<th class="p-3 rounded-r-xl">تاريخ البلاغ</th>
+<th class="p-3">وحدة المعالجة</th>
+<th class="p-3">السائق</th>
+<th class="p-3">رقم السيارة</th>
+<th class="p-3 text-center">عدد المنشآت</th>
+<th class="p-3 text-center">إجمالي الوزن (كجم)</th>
+<th class="p-3 text-center">بواسطة</th>
+<th class="p-3 text-center rounded-l-xl">الإجراءات</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-xs sm:text-sm" id="tripsTableBody">
+<!-- البيانات تظهر هنا ديناميكياً -->
+</tbody>
+</table>
+<div class="hidden text-center py-12 text-slate-400 text-sm" id="noDataMessage">
                 لا توجد سجلات محفوظة محلياً حتى الآن.
             </div>
-        </div>
-    </div>
-
-    <!-- نافذة تفاصيل الرحلة -->
-    <div id="detailsModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200">
-            <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-4 flex justify-between items-center">
-                <h3 class="font-bold text-base">تفاصيل منشآت الرحلة</h3>
-                <button onclick="closeModal()" class="text-white hover:bg-white/20 p-1.5 rounded-lg text-sm font-bold">✕</button>
-            </div>
-            <div class="p-6 max-h-96 overflow-y-auto">
-                <div id="modalTripInfo" class="mb-4 text-xs font-semibold text-slate-600 bg-slate-50 p-3 rounded-xl border"></div>
-                <table class="w-full text-right text-xs">
-                    <thead class="bg-slate-100 text-slate-700 border-b">
-                        <tr>
-                            <th class="p-2.5">اسم المنشأة / الوحدة</th>
-                            <th class="p-2.5">نوع الزيارة</th>
-                            <th class="p-2.5 text-center">الوزن</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modalFacilitiesBody" class="divide-y divide-slate-100"></tbody>
-                </table>
-            </div>
-            <div class="bg-slate-50 p-4 border-t text-left">
-                <button onclick="closeModal()" class="bg-slate-600 hover:bg-slate-700 text-white px-5 py-2 rounded-xl text-xs font-bold">إغلاق</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="syncBadge" class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden">
+</div>
+</div>
+<!-- نافذة تفاصيل الرحلة -->
+<div class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="detailsModal">
+<div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200">
+<div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-4 flex justify-between items-center">
+<h3 class="font-bold text-base">تفاصيل منشآت الرحلة</h3>
+<button class="text-white hover:bg-white/20 p-1.5 rounded-lg text-sm font-bold" id="closeModalControl">✕</button>
+</div>
+<div class="p-6 max-h-96 overflow-y-auto">
+<div class="mb-4 text-xs font-semibold text-slate-600 bg-slate-50 p-3 rounded-xl border" id="modalTripInfo"></div>
+<table class="w-full text-right text-xs">
+<thead class="bg-slate-100 text-slate-700 border-b">
+<tr>
+<th class="p-2.5">اسم المنشأة / الوحدة</th>
+<th class="p-2.5">نوع الزيارة</th>
+<th class="p-2.5 text-center">الوزن</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100" id="modalFacilitiesBody"></tbody>
+</table>
+</div>
+<div class="bg-slate-50 p-4 border-t text-left">
+<button class="bg-slate-600 hover:bg-slate-700 text-white px-5 py-2 rounded-xl text-xs font-bold" id="closeModal2Control">إغلاق</button>
+</div>
+</div>
+</div>
+<div class="fixed bottom-4 left-4 bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300 hidden" id="syncBadge">
         جاري مزامنة أحدث البيانات من السحابة... ⏳
     </div>
+<!-- طبقة الحماية وتوزيع الصلاحيات -->
 
-    <script>
-let allRecords = [];
-
-        document.addEventListener("DOMContentLoaded", async () => {
-            allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
-            displayTrips(allRecords);
-
-            const syncBadge = document.getElementById('syncBadge');
-            if(syncBadge) syncBadge.classList.remove('hidden');
-
-            try {
-                const res = await apiGet('get_records');
-                let rawData = res.data || [];
-                const localSnapshot = allRecords.slice();
-                
-                const cloudRecords = rawData.map(record => {
-                    if (record.reportDate) {
-                        let d = new Date(record.reportDate);
-                        if (!isNaN(d)) {
-                            let yyyy = d.getFullYear();
-                            let mm = String(d.getMonth() + 1).padStart(2, '0');
-                            let dd = String(d.getDate()).padStart(2, '0');
-                            record.reportDate = `${yyyy}-${mm}-${dd}`;
-                        }
-                    }
-                    if (record.timestamp) {
-                        let t = new Date(record.timestamp);
-                        if (!isNaN(t)) {
-                            record.timestamp = t.toLocaleString('ar-EG', { hour12: true });
-                        }
-                    }
-                    return record;
-                });
-                
-                allRecords = mergeCloudWithLocal(cloudRecords, localSnapshot);
-                localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
-                displayTrips(allRecords); 
-                
-                if(syncBadge) {
-                    syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "✅ تم تحديث السجلات";
-                    setTimeout(() => syncBadge.classList.add('hidden'), 2000);
-                }
-            } catch (error) {
-                console.error('حدث خطأ أثناء جلب البيانات:', error);
-                if(syncBadge) {
-                    syncBadge.className = "fixed bottom-4 left-4 bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
-                    syncBadge.innerText = "❌ تعذر الاتصال بالسحابة (عرض محلي)";
-                    setTimeout(() => syncBadge.classList.add('hidden'), 3000);
-                }
-            }
-        });
-
-        function groupRecordsIntoTrips(records) {
-            let tripsMap = {};
-            records.forEach((record, index) => {
-                record.originalIndex = index;
-                let tripKey = record.tripId || `legacy_${record.reportDate}_${record.treatmentUnit}_${record.driverName}_${record.carNumber}`;
-                if (!tripsMap[tripKey]) {
-                    tripsMap[tripKey] = {
-                        tripKey: tripKey,
-                        tripId: record.tripId || tripKey,
-                        reportDate: record.reportDate,
-                        treatmentUnit: record.treatmentUnit,
-                        driverName: record.driverName,
-                        carNumber: record.carNumber,
-                        timestamp: record.timestamp || 'غير متوفر',
-                        createdBy: record.createdBy || 'غير مسجل',
-                        facilities: []
-                    };
-                }
-                tripsMap[tripKey].facilities.push(record);
-            });
-            return Object.values(tripsMap);
-        }
-
-        function displayTrips(records) {
-            const tbody = document.getElementById('tripsTableBody');
-            const noDataMessage = document.getElementById('noDataMessage');
-            const badge = document.getElementById('tripsCountBadge');
-
-            tbody.innerHTML = '';
-            let trips = groupRecordsIntoTrips(records);
-            badge.innerText = `إجمالي الرحلات: ${trips.length}`;
-
-            if (trips.length === 0) {
-                noDataMessage.classList.remove('hidden');
-                return;
-            } else {
-                noDataMessage.classList.add('hidden');
-            }
-
-            trips.forEach((trip) => {
-                let totalWeight = trip.facilities.reduce((sum, f) => {
-                    let w = f.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(f.wasteWeight || 0);
-                    return sum + (isNaN(w) ? 0 : w);
-                }, 0);
-
-                let tr = `
-                    <tr class="hover:bg-slate-50 transition duration-150">
-                        <td class="p-3 font-medium text-slate-800">${trip.reportDate}</td>
-                        <td class="p-3 text-slate-700">${trip.treatmentUnit}</td>
-                        <td class="p-3 text-slate-700">${trip.driverName}</td>
-                        <td class="p-3 text-slate-700 font-semibold">${trip.carNumber}</td>
-                        <td class="p-3 text-center">
-                            <span class="bg-teal-50 text-teal-700 font-bold px-2.5 py-1 rounded-lg text-xs border border-teal-200">
-                                ${trip.facilities.length} منشأة
-                            </span>
-                        </td>
-                        <td class="p-3 text-center font-bold text-emerald-700">${totalWeight.toFixed(2)} كجم</td>
-                        <td class="p-3 text-center text-xs font-bold text-slate-500">${trip.createdBy}</td>
-                        <td class="p-3 text-center flex justify-center gap-2">
-                            <button onclick='showTripDetails(${JSON.stringify(trip)})' 
-                                    class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-emerald-200">
-                                👁️ التفاصيل
-                            </button>
-                            <button onclick='deleteTrip("${trip.tripId}")' 
-                                    class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-rose-200">
-                                🗑️ حذف
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += tr;
-            });
-        }
-
-        function filterTrips() {
-            let query = document.getElementById('searchInput').value.toLowerCase();
-            let filtered = allRecords.filter(r => 
-                (r.reportDate && r.reportDate.toLowerCase().includes(query)) ||
-                (r.driverName && r.driverName.toLowerCase().includes(query)) ||
-                (r.treatmentUnit && r.treatmentUnit.toLowerCase().includes(query)) ||
-                (r.carNumber && r.carNumber.toLowerCase().includes(query))
-            );
-            displayTrips(filtered);
-        }
-
-        function showTripDetails(trip) {
-            const modal = document.getElementById('detailsModal');
-            const infoDiv = document.getElementById('modalTripInfo');
-            const tbody = document.getElementById('modalFacilitiesBody');
-
-            infoDiv.innerHTML = `
-                📅 تاريخ البلاغ: <span class="text-slate-800 font-bold">${trip.reportDate}</span> | 
-                🏥 وحدة المعالجة: <span class="text-slate-800 font-bold">${trip.treatmentUnit}</span><br>
-                👨‍✈️ السائق: <span class="text-slate-800 font-bold">${trip.driverName}</span> | 
-                🚚 السيارة: <span class="text-slate-800 font-bold">${trip.carNumber}</span>
-            `;
-
-            tbody.innerHTML = '';
-            trip.facilities.forEach(f => {
-                let weightDisplay = f.visitType === 'زيارة فقط بدون نقل' 
-                    ? '<span class="text-amber-600 font-semibold">زيارة فقط (بدون نقل)</span>' 
-                    : `<span class="font-bold">${f.wasteWeight} ${f.weightUnit}</span>`;
-
-                let row = `
-                    <tr>
-                        <td class="p-2.5 font-medium text-slate-800">${f.subFacilityName || f.facilityName}</td>
-                        <td class="p-2.5 text-slate-600">${f.visitType}</td>
-                        <td class="p-2.5 text-center">${weightDisplay}</td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-
-            modal.classList.remove('hidden');
-        }
-
-        function closeModal() {
-            document.getElementById('detailsModal').classList.add('hidden');
-        }
-
-        async function deleteTrip(tripId) {
-            if (!confirm('هل أنت متأكد من حذف هذه الرحلة بالكامل وكافة المنشآت التابعة لها من النظام (السحابة)؟')) return;
-
-            const badge = document.getElementById('tripsCountBadge');
-            const originalText = badge.innerText;
-            badge.innerText = "جاري الحذف من السحابة... ⏳";
-
-            try {
-                const res = await apiPost('delete_trip', { tripId: String(tripId).trim() });
-                if (res.result !== 'success') throw new Error(res.message || 'فشل الحذف');
-
-                allRecords = allRecords.filter(r => String(r.tripId || '').trim() !== String(tripId).trim());
-                localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
-                displayTrips(allRecords);
-                badge.innerText = `إجمالي الرحلات: ${groupRecordsIntoTrips(allRecords).length}`;
-            } catch(e) {
-                alert(e.message || 'حدث خطأ أثناء حذف الرحلة من Google Sheets. لم يتم حذف النسخة المحلية.');
-                badge.innerText = originalText;
-            }
-        }
-
-        function clearLocalStorage() {
-            if (confirm('تحذير: سيتم مسح السجلات محلياً. السحابة لن تتأثر. هل أنت متأكد؟')) {
-                localStorage.removeItem('dakahlia_waste_records');
-                allRecords = [];
-                displayTrips(allRecords);
-            }
-        }
-    </script>
-    
-    <!-- طبقة الحماية وتوزيع الصلاحيات -->
-    <script>
-        // 1. التحقق من تسجيل الدخول
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (!currentUser) {
-            window.location.href = 'login.html';
-        }
-
-        // 2. التحقق من صلاحية الوصول للصفحة الحالية
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        const restrictedPages = ['view.html', 'reports.html', 'facility_report.html'];
-        
-        if (currentUser && currentUser.role === 'مدخل بيانات' && restrictedPages.some(p => currentPage.includes(p))) {
-            alert('عفواً، صلاحيتك (مدخل بيانات) لا تسمح بالوصول لهذه الصفحة.');
-            window.location.href = 'index.html';
-        }
-
-        // 3. تطبيق قيود وتعديلات الواجهة بعد التحميل
-        window.addEventListener('DOMContentLoaded', () => {
-            if (!currentUser) return;
-
-            // أ. تعديل شريط التنقل (إضافة المستخدم، خروج، ولوحة المدير)
-            const navContainer = document.querySelector('.flex.flex-wrap.gap-2.justify-center');
-            if (navContainer) {
-                // إخفاء روابط التقارير لمدخل البيانات
-                if (currentUser.role === 'مدخل بيانات') {
-                    const links = navContainer.querySelectorAll('a');
-                    links.forEach(link => {
-                        if(!link.href.includes('index.html')) link.style.display = 'none';
-                    });
-                }
-
-                // زر الإدارة للمدير فقط
-                if (currentUser.role === 'مدير') {
-                    const adminBtn = document.createElement('a');
-                    adminBtn.href = 'admin_users.html';
-                    adminBtn.className = 'bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
-                    adminBtn.innerText = '⚙️ لوحة المستخدمين';
-                    navContainer.appendChild(adminBtn);
-                }
-
-                // رسالة الترحيب
-                const userBadge = document.createElement('span');
-                userBadge.className = 'bg-white/20 text-white px-3.5 py-2 rounded-xl font-semibold text-xs border border-white/30 backdrop-blur-sm flex items-center';
-                userBadge.innerText = `👤 ${currentUser.fullName} (${currentUser.role})`;
-                navContainer.appendChild(userBadge);
-
-                // زر تسجيل الخروج
-                const logoutBtn = document.createElement('button');
-                logoutBtn.type = 'button';
-                logoutBtn.onclick = performLogout;
-                logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
-                logoutBtn.innerText = '🚪 خروج';
-                navContainer.appendChild(logoutBtn);
-            }
-
-            // ب. حجب صلاحيات الحذف والتعديل لغير المدير (للمشرفين ومدخلي البيانات)
-            if (currentUser.role !== 'مدير') {
-                // إخفاء زر "مسح الذاكرة المحلية"
-                const clearBtn = document.querySelector('button[onclick="clearLocalStorage()"]');
-                if (clearBtn) clearBtn.style.display = 'none';
-
-                // إخفاء زر "إدارة القوائم والنسخ الاحتياطي"
-                const managerBtn = document.querySelector('button[onclick="toggleManagerModal()"]');
-                if (managerBtn) managerBtn.style.display = 'none';
-
-                // إخفاء أزرار "حذف الرحلة" في الجدول بشكل جذري
-                const style = document.createElement('style');
-                style.innerHTML = `button[onclick^="deleteTrip"] { display: none !important; }`;
-                document.head.appendChild(style);
-            }
-        });
-    </script>
+<script src="assets/js/core/namespace.js"></script>
+<script src="assets/js/config/app-config.js"></script>
+<script src="assets/js/core/contracts.js"></script>
+<script src="assets/js/core/logger.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/session.js"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/errors.js"></script>
+<script src="assets/js/core/validators.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/domain/record.entity.js"></script>
+<script src="assets/js/domain/trip.entity.js"></script>
+<script src="assets/js/domain/user.entity.js"></script>
+<script src="assets/js/domain/settings.entity.js"></script>
+<script src="assets/js/data/mappers/record.mapper.js"></script>
+<script src="assets/js/data/mappers/user.mapper.js"></script>
+<script src="assets/js/data/mappers/settings.mapper.js"></script>
+<script src="assets/js/data/repositories/records.repository.js"></script>
+<script src="assets/js/data/repositories/auth.repository.js"></script>
+<script src="assets/js/data/repositories/settings.repository.js"></script>
+<script src="assets/js/data/repositories/users.repository.js"></script>
+<script src="assets/js/core/diagnostics.js"></script>
+<script src="assets/js/core/ui.js"></script>
+<script src="assets/js/features/auth/auth.service.js"></script>
+<script src="assets/js/features/records/records.service.js"></script>
+<script src="assets/js/features/trips/trips.service.js"></script>
+<script src="assets/js/common/access-control.js"></script>
+<script src="assets/js/pages/view.js"></script>
 </body>
 </html>

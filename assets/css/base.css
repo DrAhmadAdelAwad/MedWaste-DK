@@ -1,0 +1,4 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.role-non-admin .delete-trip-btn { display: none !important; }

@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل الدخول - منظومة النفايات الطبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
-    <script src="app-config.js"></script>
+    <link rel="stylesheet" href="assets/css/base.css">
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
 
@@ -39,42 +38,30 @@
         </form>
     </div>
 
-    <script>
-        // ضع رابط السكربت الخاص بك هنا
-// التحقق مما إذا كان مسجل الدخول بالفعل
-        if (localStorage.getItem('currentUser')) {
-            window.location.href = 'index.html';
-        }
-
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submitBtn');
-            const msg = document.getElementById('statusMsg');
-            btn.innerText = 'جاري التحقق...';
-            btn.disabled = true;
-
-            try {
-                const result = await apiPost('login', {
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value
-                });
-                
-                if (result.result === 'success') {
-                    localStorage.setItem('currentUser', JSON.stringify(result.user));
-                    window.location.href = 'index.html';
-                } else {
-                    msg.innerText = result.message;
-                    msg.classList.remove('hidden');
-                    btn.innerText = 'دخول';
-                    btn.disabled = false;
-                }
-            } catch (err) {
-                msg.innerText = err.message || 'خطأ في الاتصال بالخادم';
-                msg.classList.remove('hidden');
-                btn.innerText = 'دخول';
-                btn.disabled = false;
-            }
-        });
-    </script>
+<script src="assets/js/core/namespace.js"></script>
+<script src="assets/js/config/app-config.js"></script>
+<script src="assets/js/core/contracts.js"></script>
+<script src="assets/js/core/logger.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/session.js"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/errors.js"></script>
+<script src="assets/js/core/validators.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/domain/record.entity.js"></script>
+<script src="assets/js/domain/trip.entity.js"></script>
+<script src="assets/js/domain/user.entity.js"></script>
+<script src="assets/js/domain/settings.entity.js"></script>
+<script src="assets/js/data/mappers/record.mapper.js"></script>
+<script src="assets/js/data/mappers/user.mapper.js"></script>
+<script src="assets/js/data/mappers/settings.mapper.js"></script>
+<script src="assets/js/data/repositories/records.repository.js"></script>
+<script src="assets/js/data/repositories/auth.repository.js"></script>
+<script src="assets/js/data/repositories/settings.repository.js"></script>
+<script src="assets/js/data/repositories/users.repository.js"></script>
+<script src="assets/js/core/diagnostics.js"></script>
+<script src="assets/js/core/ui.js"></script>
+<script src="assets/js/features/auth/auth.service.js"></script>
+<script src="assets/js/pages/login.js"></script>
 </body>
 </html>

@@ -1,0 +1,63 @@
+/**
+ * Public API contract constants shared by backend modules.
+ * Keep the matching frontend file assets/js/core/contracts.js in sync.
+ */
+
+var API_CONTRACT_VERSION = '1.2';
+
+var API_ACTIONS = {
+  REGISTER: 'register',
+  LOGIN: 'login',
+  LOGOUT: 'logout',
+  FORGOT_PASSWORD: 'forgot_password',
+  UPDATE_ROLE: 'update_role',
+  SAVE_SETTINGS: 'save_settings',
+  ADD_RECORD: 'add_record',
+  ADD_RECORDS_BATCH: 'add_records_batch',
+  DELETE_TRIP: 'delete_trip',
+  GET_RECORDS: 'get_records',
+  GET_SETTINGS: 'get_settings',
+  GET_USERS: 'get_users',
+  GET_ME: 'get_me',
+  HEALTH: 'health'
+};
+
+var ROLES = {
+  DATA_ENTRY: 'مدخل بيانات',
+  SUPERVISOR: 'مشرف',
+  ADMIN: 'مدير'
+};
+
+var ALLOWED_ROLES = [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN];
+
+var ERROR_CODES = {
+  VALIDATION: 'VALIDATION',
+  INVALID_JSON: 'INVALID_JSON',
+  INVALID_LOGIN: 'INVALID_LOGIN',
+  EMAIL_EXISTS: 'EMAIL_EXISTS',
+  EMAIL_NOT_FOUND: 'EMAIL_NOT_FOUND',
+  MAIL_ERROR: 'MAIL_ERROR',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  FORBIDDEN: 'FORBIDDEN',
+  NOT_FOUND: 'NOT_FOUND',
+  LAST_ADMIN: 'LAST_ADMIN',
+  TOO_MANY_RECORDS: 'TOO_MANY_RECORDS',
+  BUSY: 'BUSY',
+  UNKNOWN_ACTION: 'UNKNOWN_ACTION',
+  SERVER_ERROR: 'SERVER_ERROR',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  REQUEST_TIMEOUT: 'REQUEST_TIMEOUT',
+  INVALID_RESPONSE: 'INVALID_RESPONSE'
+};
+
+var API_LIMITS = {
+  PASSWORD_MIN_LENGTH: 6,
+  RECORDS_PER_BATCH: 250,
+  RECORDS_PAGE_SIZE_DEFAULT: 500,
+  RECORDS_PAGE_SIZE_MAX: 1000,
+  NAME_MAX_LENGTH: 160,
+  EMAIL_MAX_LENGTH: 254,
+  PHONE_MAX_LENGTH: 40,
+  GENERIC_TEXT_MAX_LENGTH: 500,
+  SETTINGS_JSON_MAX_LENGTH: 500000
+};

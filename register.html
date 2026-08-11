@@ -6,6 +6,7 @@
     <title>تسجيل مستخدم - منظومة النفايات الطبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 py-8">
 
@@ -64,9 +65,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             const msg = document.getElementById('statusMsg');
@@ -83,18 +82,15 @@
             btn.innerText = 'جاري تسجيل البيانات...';
             btn.disabled = true;
 
-            let formData = new FormData();
-            formData.append('action', 'register');
-            formData.append('fullName', document.getElementById('fullName').value);
-            formData.append('jobTitle', document.getElementById('jobTitle').value);
-            formData.append('workplace', document.getElementById('workplace').value);
-            formData.append('mobile', document.getElementById('mobile').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('password', pass);
-
             try {
-                const response = await fetch(scriptURL, { method: 'POST', body: formData });
-                const result = await response.json();
+                const result = await apiPost('register', {
+                    fullName: document.getElementById('fullName').value,
+                    jobTitle: document.getElementById('jobTitle').value,
+                    workplace: document.getElementById('workplace').value,
+                    mobile: document.getElementById('mobile').value,
+                    email: document.getElementById('email').value,
+                    password: pass
+                });
                 
                 if (result.result === 'success') {
                     alert('تم التسجيل بنجاح! يمكنك الآن تسجيل الدخول.');
@@ -106,7 +102,7 @@
                     btn.disabled = false;
                 }
             } catch (err) {
-                msg.innerText = 'خطأ في الاتصال بالخادم';
+                msg.innerText = err.message || 'خطأ في الاتصال بالخادم';
                 msg.classList.remove('hidden');
                 btn.innerText = 'تأكيد وإنشاء الحساب';
                 btn.disabled = false;

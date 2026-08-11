@@ -8,6 +8,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     </style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
 
@@ -108,8 +109,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-        let allRecords = [];
+let allRecords = [];
 
         document.addEventListener("DOMContentLoaded", async () => {
             allRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
@@ -119,11 +119,11 @@
             if(syncBadge) syncBadge.classList.remove('hidden');
 
             try {
-                const response = await fetch(scriptURL);
-                if (!response.ok) throw new Error('فشل الاتصال بالسحابة');
-                let rawData = await response.json();
+                const res = await apiGet('get_records');
+                let rawData = res.data || [];
+                const localSnapshot = allRecords.slice();
                 
-                allRecords = rawData.map(record => {
+                const cloudRecords = rawData.map(record => {
                     if (record.reportDate) {
                         let d = new Date(record.reportDate);
                         if (!isNaN(d)) {
@@ -142,6 +142,7 @@
                     return record;
                 });
                 
+                allRecords = mergeCloudWithLocal(cloudRecords, localSnapshot);
                 localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
                 displayTrips(allRecords); 
                 
@@ -164,10 +165,11 @@
             let tripsMap = {};
             records.forEach((record, index) => {
                 record.originalIndex = index;
-                let tripKey = `${record.reportDate}_${record.treatmentUnit}_${record.driverName}_${record.carNumber}`;
+                let tripKey = record.tripId || `legacy_${record.reportDate}_${record.treatmentUnit}_${record.driverName}_${record.carNumber}`;
                 if (!tripsMap[tripKey]) {
                     tripsMap[tripKey] = {
                         tripKey: tripKey,
+                        tripId: record.tripId || tripKey,
                         reportDate: record.reportDate,
                         treatmentUnit: record.treatmentUnit,
                         driverName: record.driverName,
@@ -222,7 +224,7 @@
                                     class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-emerald-200">
                                 👁️ التفاصيل
                             </button>
-                            <button onclick='deleteTrip("${trip.reportDate}", "${trip.treatmentUnit}", "${trip.driverName}", "${trip.carNumber}")' 
+                            <button onclick='deleteTrip("${trip.tripId}")' 
                                     class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-rose-200">
                                 🗑️ حذف
                             </button>
@@ -279,40 +281,24 @@
             document.getElementById('detailsModal').classList.add('hidden');
         }
 
-        async function deleteTrip(rDate, tUnit, dName, cNum) {
-            if (confirm('هل أنت متأكد من حذف هذه الرحلة بالكامل وكافة المنشآت التابعة لها من النظام (السحابة)؟')) {
-                
-                // تحديث واجهة المستخدم الفوري لسرعة الأداء مع التخلص من أي فراغات في النصوص
-                let updatedRecords = allRecords.filter(r => {
-                    return String(r.reportDate).trim() !== String(rDate).trim() || 
-                           String(r.treatmentUnit).trim() !== String(tUnit).trim() || 
-                           String(r.driverName).trim() !== String(dName).trim() || 
-                           String(r.carNumber).trim() !== String(cNum).trim();
-                });
-                
-                allRecords = updatedRecords;
-                localStorage.setItem('dakahlia_waste_records', JSON.stringify(updatedRecords));
+        async function deleteTrip(tripId) {
+            if (!confirm('هل أنت متأكد من حذف هذه الرحلة بالكامل وكافة المنشآت التابعة لها من النظام (السحابة)؟')) return;
+
+            const badge = document.getElementById('tripsCountBadge');
+            const originalText = badge.innerText;
+            badge.innerText = "جاري الحذف من السحابة... ⏳";
+
+            try {
+                const res = await apiPost('delete_trip', { tripId: String(tripId).trim() });
+                if (res.result !== 'success') throw new Error(res.message || 'فشل الحذف');
+
+                allRecords = allRecords.filter(r => String(r.tripId || '').trim() !== String(tripId).trim());
+                localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
                 displayTrips(allRecords);
-
-                const badge = document.getElementById('tripsCountBadge');
-                const originalText = badge.innerText;
-                badge.innerText = "جاري الحذف من السحابة... ⏳";
-
-                // إرسال أمر الحذف لجوجل شيت
-                let formData = new FormData();
-                formData.append('action', 'delete_trip');
-                formData.append('reportDate', String(rDate).trim());
-                formData.append('treatmentUnit', String(tUnit).trim());
-                formData.append('driverName', String(dName).trim());
-                formData.append('carNumber', String(cNum).trim());
-
-                try {
-                    await fetch(scriptURL, { method: 'POST', body: formData });
-                    badge.innerText = `إجمالي الرحلات: ${groupRecordsIntoTrips(allRecords).length}`;
-                } catch(e) {
-                    alert("حدث خطأ أثناء الاتصال. تم حذف الرحلة من جهازك فقط ولم تحذف من السحابة.");
-                    badge.innerText = originalText;
-                }
+                badge.innerText = `إجمالي الرحلات: ${groupRecordsIntoTrips(allRecords).length}`;
+            } catch(e) {
+                alert(e.message || 'حدث خطأ أثناء حذف الرحلة من Google Sheets. لم يتم حذف النسخة المحلية.');
+                badge.innerText = originalText;
             }
         }
 
@@ -375,10 +361,7 @@
                 // زر تسجيل الخروج
                 const logoutBtn = document.createElement('button');
                 logoutBtn.type = 'button';
-                logoutBtn.onclick = () => {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
-                };
+                logoutBtn.onclick = performLogout;
                 logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
                 logoutBtn.innerText = '🚪 خروج';
                 navContainer.appendChild(logoutBtn);

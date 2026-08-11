@@ -14,6 +14,7 @@
             .print-card { border: none !important; box-shadow: none !important; }
         }
     </style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
 
@@ -181,8 +182,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-        let allRecords = [];
+let allRecords = [];
         let sysAdmins = {};
         let govFacilities = [];
         let privFacilities = [];
@@ -211,10 +211,9 @@
 
             try {
                 // جلب الإعدادات (لتحديث القوائم المنسدلة)
-                const settingsRes = await fetch(scriptURL + '?action=get_settings');
-                const sData = await settingsRes.json();
+                const sData = await apiGet('get_settings');
                 if(sData.result === 'success' && sData.data) {
-                    const cSettings = JSON.parse(sData.data);
+                    const cSettings = parseMaybeJson(sData.data) || {};
                     sysAdmins = cSettings.healthAdmins || {};
                     govFacilities = cSettings.govFacilities || [];
                     privFacilities = cSettings.privateFacilities || [];
@@ -228,10 +227,11 @@
                 }
 
                 // جلب السجلات
-                const response = await fetch(scriptURL);
-                let rawData = await response.json();
+                const recordsRes = await apiGet('get_records');
+                let rawData = recordsRes.data || [];
+                const localSnapshot = allRecords.slice();
                 
-                allRecords = rawData.map(record => {
+                const cloudRecords = rawData.map(record => {
                     if (record.reportDate) {
                         let d = new Date(record.reportDate);
                         if (!isNaN(d)) {
@@ -250,6 +250,7 @@
                     return record;
                 });
                 
+                allRecords = mergeCloudWithLocal(cloudRecords, localSnapshot);
                 localStorage.setItem('dakahlia_waste_records', JSON.stringify(allRecords));
                 generateFacilityReport();
 
@@ -597,10 +598,7 @@
                 // زر تسجيل الخروج
                 const logoutBtn = document.createElement('button');
                 logoutBtn.type = 'button';
-                logoutBtn.onclick = () => {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
-                };
+                logoutBtn.onclick = performLogout;
                 logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
                 logoutBtn.innerText = '🚪 خروج';
                 navContainer.appendChild(logoutBtn);

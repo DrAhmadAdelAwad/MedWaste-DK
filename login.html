@@ -6,6 +6,7 @@
     <title>تسجيل الدخول - منظومة النفايات الطبية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
 
@@ -40,9 +41,7 @@
 
     <script>
         // ضع رابط السكربت الخاص بك هنا
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-
-        // التحقق مما إذا كان مسجل الدخول بالفعل
+// التحقق مما إذا كان مسجل الدخول بالفعل
         if (localStorage.getItem('currentUser')) {
             window.location.href = 'index.html';
         }
@@ -54,14 +53,11 @@
             btn.innerText = 'جاري التحقق...';
             btn.disabled = true;
 
-            let formData = new FormData();
-            formData.append('action', 'login');
-            formData.append('email', document.getElementById('email').value);
-            formData.append('password', document.getElementById('password').value);
-
             try {
-                const response = await fetch(scriptURL, { method: 'POST', body: formData });
-                const result = await response.json();
+                const result = await apiPost('login', {
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                });
                 
                 if (result.result === 'success') {
                     localStorage.setItem('currentUser', JSON.stringify(result.user));
@@ -73,7 +69,7 @@
                     btn.disabled = false;
                 }
             } catch (err) {
-                msg.innerText = 'خطأ في الاتصال بالخادم';
+                msg.innerText = err.message || 'خطأ في الاتصال بالخادم';
                 msg.classList.remove('hidden');
                 btn.innerText = 'دخول';
                 btn.disabled = false;

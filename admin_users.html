@@ -6,6 +6,7 @@
     <title>لوحة الإدارة - المستخدمين</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }</style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
     <div class="max-w-6xl mx-auto space-y-6">
@@ -36,9 +37,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-        
-        // حماية الصفحة للمدير فقط
+// حماية الصفحة للمدير فقط
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser || currentUser.role !== 'مدير') {
             alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');
@@ -47,8 +46,8 @@
 
         async function loadUsers() {
             try {
-                const response = await fetch(scriptURL + '?action=get_users');
-                const users = await response.json();
+                const res = await apiGet('get_users');
+                const users = res.data || [];
                 const tbody = document.getElementById('usersTable');
                 tbody.innerHTML = '';
                 
@@ -70,7 +69,7 @@
                                     <option value="مشرف" ${user.role === 'مشرف' ? 'selected' : ''}>مشرف</option>
                                     <option value="مدير" ${user.role === 'مدير' ? 'selected' : ''}>مدير</option>
                                 </select>
-                                <button onclick="updateRole('${user.email}')" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">تحديث</button>
+                                <button onclick="updateRole('${user.email}', this)" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">تحديث</button>
                             </td>
                         </tr>
                     `;
@@ -80,28 +79,23 @@
             }
         }
 
-        async function updateRole(email) {
+        async function updateRole(email, btn) {
             const newRole = document.getElementById(`role_${email}`).value;
-            let formData = new FormData();
-            formData.append('action', 'update_role');
-            formData.append('targetEmail', email);
-            formData.append('newRole', newRole);
-
-            const btn = event.target;
             btn.innerText = '...';
             btn.disabled = true;
 
             try {
-                const response = await fetch(scriptURL, { method: 'POST', body: formData });
-                const res = await response.json();
+                const res = await apiPost('update_role', { targetEmail: email, newRole: newRole });
                 if(res.result === 'success') {
                     alert('تم تحديث الصلاحية بنجاح');
                     loadUsers();
                 } else {
-                    alert('حدث خطأ');
+                    alert(res.message || 'حدث خطأ');
                 }
             } catch(e) {
-                alert('فشل الاتصال');
+                alert(e.message || 'فشل الاتصال');
+                btn.innerText = 'تحديث';
+                btn.disabled = false;
             }
         }
 

@@ -8,6 +8,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     </style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
 
@@ -316,9 +317,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-        
-        const todayStr = new Date().toISOString().split('T')[0];
+const todayStr = new Date().toISOString().split('T')[0];
         const dateInput = document.getElementById('reportDate');
         dateInput.value = todayStr;
         dateInput.max = todayStr;
@@ -434,10 +433,16 @@
             if(syncBadge) syncBadge.classList.remove('hidden');
 
             try {
-                const response = await fetch(scriptURL + '?action=get_settings');
-                const res = await response.json();
+                const pendingSettings = localStorage.getItem('sys_settings_pending');
+                const storedUser = getStoredUser();
+                if (pendingSettings && storedUser && storedUser.role === 'مدير') {
+                    await apiPost('save_settings', { settingsData: pendingSettings });
+                    localStorage.removeItem('sys_settings_pending');
+                }
+
+                const res = await apiGet('get_settings');
                 if (res.result === 'success' && res.data) {
-                    appData = JSON.parse(res.data);
+                    appData = Object.assign({}, appData, parseMaybeJson(res.data) || {});
                     
                     localStorage.setItem('sys_health_admins', JSON.stringify(appData.healthAdmins));
                     localStorage.setItem('sys_cars', JSON.stringify(appData.cars));
@@ -461,6 +466,7 @@
                     if(syncBadge) syncBadge.classList.add('hidden');
                 }
             } catch(e) { 
+                console.error('تعذر مزامنة الإعدادات:', e);
                 if(syncBadge) syncBadge.classList.add('hidden');
             }
         });
@@ -480,12 +486,10 @@
                 syncBadge.classList.remove('hidden');
             }
 
-            let formData = new FormData();
-            formData.append('action', 'save_settings');
-            formData.append('settingsData', JSON.stringify(appData));
-            
+            localStorage.setItem('sys_settings_pending', JSON.stringify(appData));
             try {
-                await fetch(scriptURL, { method: 'POST', body: formData });
+                await apiPost('save_settings', { settingsData: JSON.stringify(appData) });
+                localStorage.removeItem('sys_settings_pending');
                 if(syncBadge) {
                     syncBadge.className = "fixed bottom-4 left-4 bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg z-50 transition-opacity duration-300";
                     syncBadge.innerText = "✅ تم تحديث وتعميم القوائم للجميع";
@@ -984,7 +988,7 @@
         const form = document.getElementById('wasteForm');
         const statusMessage = document.getElementById('statusMessage');
 
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const reportDate = document.getElementById('reportDate').value;
@@ -1014,7 +1018,7 @@
                 const isAlreadyAdded = currentBatch.some(item => item.subFacilityName === subFacility);
                 if (!isAlreadyAdded) {
                     currentBatch.push({
-                        id: Date.now() + Math.random(),
+                        id: generateId('item-'),
                         facilityMainType: mainType,
                         healthAdmin: healthAdmin,
                         subFacilityName: subFacility,
@@ -1031,14 +1035,14 @@
             }
 
             let localRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
-            const timestamp = new Date().toLocaleString();
-
-            // جلب اسم المستخدم من الذاكرة
-            const loggedInUser = JSON.parse(localStorage.getItem('currentUser'));
+            const timestamp = new Date().toISOString();
+            const tripId = generateId('trip-');
+            const loggedInUser = getStoredUser();
             const userName = loggedInUser ? loggedInUser.fullName : 'مدخل بيانات';
 
             const recordsToSave = currentBatch.map(item => ({
-                id: item.id,
+                recordId: generateId('rec-'),
+                tripId: tripId,
                 reportDate: reportDate,
                 treatmentUnit: treatmentUnit,
                 driverName: driverName,
@@ -1050,17 +1054,31 @@
                 visitType: item.visitType,
                 wasteWeight: item.wasteWeight,
                 weightUnit: item.weightUnit,
-                createdBy: userName, // تمرير اسم المستخدم
-                timestamp: timestamp
+                createdBy: userName,
+                timestamp: timestamp,
+                _syncStatus: 'pending'
             }));
 
             recordsToSave.forEach(rec => localRecords.push(rec));
             localStorage.setItem('dakahlia_waste_records', JSON.stringify(localRecords));
             updateLocalStorageCounter();
 
-            recordsToSave.forEach(rec => sendDataToCloud(rec));
+            let cloudSaved = false;
+            try {
+                const res = await apiPost('add_records_batch', { recordsData: JSON.stringify(recordsToSave) });
+                if (res.result === 'success') {
+                    markRecordsSynced(recordsToSave.map(r => r.recordId));
+                    cloudSaved = true;
+                }
+            } catch (error) {
+                console.warn('تعذر رفع الرحلة الآن؛ ستظل محفوظة محلياً لحين عودة الاتصال.', error);
+            }
 
-            showStatus(`تم بنجاح حفظ وإرسال إجمالي (${recordsToSave.length}) منشأة للرحلة!`, 'success');
+            if (cloudSaved) {
+                showStatus(`تم حفظ ومزامنة إجمالي (${recordsToSave.length}) منشأة للرحلة بنجاح.`, 'success');
+            } else {
+                showStatus(`تم حفظ (${recordsToSave.length}) منشأة محلياً، لكن تعذر تأكيد الحفظ في Google Sheets. ستتم إعادة المحاولة تلقائياً.`, 'error');
+            }
 
             currentBatch = [];
             updateBatchTable();
@@ -1068,17 +1086,26 @@
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('reportDate').value = todayStr;
             resetFacilityForm();
+            updateLocalStorageCounter();
         });
 
-        function sendDataToCloud(data) {
-            let formBody = new FormData();
-            for (let key in data) {
-                formBody.append(key, data[key]);
+        async function syncPendingRecords() {
+            const localRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
+            const pending = localRecords.filter(r => r && r._syncStatus === 'pending' && r.recordId && r.tripId);
+            if (!pending.length || !getSessionToken()) return;
+
+            try {
+                const res = await apiPost('add_records_batch', { recordsData: JSON.stringify(pending) });
+                if (res.result === 'success') {
+                    markRecordsSynced(pending.map(r => r.recordId));
+                    updateLocalStorageCounter();
+                }
+            } catch (error) {
+                console.warn('توجد سجلات محلية معلقة وسيتم إعادة مزامنتها لاحقاً.', error);
             }
-            fetch(scriptURL, { method: 'POST', body: formBody })
-                .then(response => console.log('تم رفع السجل بنجاح'))
-                .catch(error => console.warn('الإنترنت غير متوفر، البيانات محفوظة محلياً.'));
         }
+
+        window.addEventListener('load', syncPendingRecords);
 
         function updateLocalStorageCounter() {
             let localRecords = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
@@ -1144,10 +1171,7 @@
                 // زر تسجيل الخروج
                 const logoutBtn = document.createElement('button');
                 logoutBtn.type = 'button';
-                logoutBtn.onclick = () => {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
-                };
+                logoutBtn.onclick = performLogout;
                 logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
                 logoutBtn.innerText = '🚪 خروج';
                 navContainer.appendChild(logoutBtn);

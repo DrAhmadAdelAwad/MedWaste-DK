@@ -10,6 +10,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     </style>
+    <script src="app-config.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 sm:p-6">
 
@@ -117,8 +118,7 @@
     </div>
 
     <script>
-        const scriptURL = 'https://script.google.com/macros/s/AKfycby3fbtG-5YHmHkPF6O-zq9sHE1X20iM8jmwEF_z-aAy0dYFTfDoUoNypms7Luk4NJDuIw/exec';
-        let unitsChartInstance = null;
+let unitsChartInstance = null;
         let typesChartInstance = null;
         let currentFilteredRecords = [];
 
@@ -137,9 +137,9 @@
             if(syncBadge) syncBadge.classList.remove('hidden');
 
             try {
-                const response = await fetch(scriptURL);
-                if (!response.ok) throw new Error('فشل الاتصال بالسحابة');
-                let rawData = await response.json();
+                const res = await apiGet('get_records');
+                let rawData = res.data || [];
+                const localSnapshot = JSON.parse(localStorage.getItem('dakahlia_waste_records') || '[]');
                 
                 const cloudData = rawData.map(record => {
                     if (record.reportDate) {
@@ -160,7 +160,8 @@
                     return record;
                 });
                 
-                localStorage.setItem('dakahlia_waste_records', JSON.stringify(cloudData));
+                const mergedData = mergeCloudWithLocal(cloudData, localSnapshot);
+                localStorage.setItem('dakahlia_waste_records', JSON.stringify(mergedData));
                 generateReports(); // تحديث صامت
 
                 if(syncBadge) {
@@ -393,10 +394,7 @@
                 // زر تسجيل الخروج
                 const logoutBtn = document.createElement('button');
                 logoutBtn.type = 'button';
-                logoutBtn.onclick = () => {
-                    localStorage.removeItem('currentUser');
-                    window.location.href = 'login.html';
-                };
+                logoutBtn.onclick = performLogout;
                 logoutBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
                 logoutBtn.innerText = '🚪 خروج';
                 navContainer.appendChild(logoutBtn);

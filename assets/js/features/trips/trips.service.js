@@ -7,21 +7,20 @@
     const role=Session.getUser()?.role;
     return role===Contracts.Roles.FACILITY_ENTRY?Contracts.EntrySources.FACILITY:Contracts.EntrySources.TREATMENT;
   }
-  function makeReference(date){return `MW-${String(date||'').replace(/-/g,'')}-${Utils.generateId('').replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase()}`;}
+  function makeReference(date,source){const side=source===Contracts.EntrySources.FACILITY?'F':'T';return `MW-${side}-${String(date||'').replace(/-/g,'')}-${Utils.generateId('').replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase()}`;}
   function validateForSource(source,batch){
     if(source===Contracts.EntrySources.FACILITY){
-      if(!Array.isArray(batch)||batch.length!==1)throw Errors.validation('مدخل المنشأة يسجل منشأته فقط في كل عملية.');
-      Validators.assertFacility(batch[0],false);
+      if(!Array.isArray(batch)||batch.length!==1)throw Errors.validation('مدخل المنشأة يسجل منشأة أو وحدة واحدة في كل عملية.');
+      const user=Session.getUser()||{};
+      Validators.assertFacility(batch[0],user.entityType===Contracts.EntityTypes.HEALTH_ADMIN);
       return;
     }
     Validators.assertBatch(batch);
-    const missing=(batch||[]).find(item=>!String(item?.tripReference||'').trim());
-    if(missing)throw Errors.validation('مرجع الرحلة الصادر من المنشأة مطلوب لكل منشأة قبل حفظ إدخال وحدة المعالجة.');
   }
   function createRecords(route,batch){
     const user=Session.getUser(),source=sourceForUser(),effectiveRoute=Object.assign({},route);
-    if(source===Contracts.EntrySources.FACILITY&&!effectiveRoute.tripReference)effectiveRoute.tripReference=makeReference(route.reportDate);
-    return TripEntity.createRecords(effectiveRoute,batch,{generateId:Utils.generateId,createdBy:user?user.fullName:'',timestamp:new Date().toISOString(),entrySource:source});
+    const preparedBatch=(batch||[]).map(item=>Object.assign({},item,{tripReference:String(item?.tripReference||'').trim()||makeReference(route.reportDate,source)}));
+    return TripEntity.createRecords(effectiveRoute,preparedBatch,{generateId:Utils.generateId,createdBy:user?user.fullName:'',timestamp:new Date().toISOString(),entrySource:source});
   }
   async function save(route,batch){
     Validators.assertRoute(route);

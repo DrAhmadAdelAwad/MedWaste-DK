@@ -45,7 +45,8 @@
                 document.getElementById('primaryChartTitle').textContent = currentSource === Contracts.EntrySources.FACILITY
                     ? 'الأوزان المسجلة حسب المنشأة (كجم)'
                     : 'الأوزان الموردة لكل وحدة معالجة (كجم)';
-                UI.setSyncBadge('جاري تحميل مصدر الإدخال... ⏳', 'loading');
+                generateReports();
+                UI.setSyncBadge('عرض فوري من الذاكرة المحلية — جاري تحديث المصدر... ⏳', 'loading');
                 try { await Records.fetchMerged(currentSource); generateReports(); UI.setSyncBadge('✅ تم تحديث البيانات', 'success', 1500); }
                 catch (_) { generateReports(); UI.setSyncBadge('❌ عرض البيانات المحلية', 'error', 2200); }
             });

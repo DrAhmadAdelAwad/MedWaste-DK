@@ -16,7 +16,12 @@
     privateFacilities: 'sys_priv_facilities',
     privateCompanies: 'sys_priv_companies',
     treatmentUnits: 'sys_treatment_units',
-    pendingSettings: 'sys_settings_pending'
+    pendingSettings: 'sys_settings_pending',
+    settingsFetchedAt: 'medwaste_settings_fetched_at',
+    entitiesDirectory: 'medwaste_entities_directory',
+    entitiesFetchedAt: 'medwaste_entities_fetched_at',
+    facilityRecordsFetchedAt: 'medwaste_facility_records_fetched_at',
+    treatmentRecordsFetchedAt: 'medwaste_treatment_records_fetched_at'
   });
 
   function getText(key, fallback = '') {

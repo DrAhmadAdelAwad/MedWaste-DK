@@ -34,9 +34,15 @@
     SettingsEntity.KEYS.forEach(key => writeLocal(key, normalized[key]));
   }
 
+  function isCloudFresh(maxAgeMs = 300000) {
+    const at = Number(Storage.getText(Storage.KEYS.settingsFetchedAt, '0')) || 0;
+    return at > 0 && (Date.now() - at) < Math.max(0, Number(maxAgeMs) || 0);
+  }
+
   async function fetchCloud(defaults) {
     const response = await Api.read(Contracts.Actions.GET_SETTINGS);
     if (response.result !== 'success' || !response.data) return null;
+    Storage.setText(Storage.KEYS.settingsFetchedAt, Date.now());
     return SettingsMapper.fromApi(response.data, defaults);
   }
 
@@ -45,6 +51,9 @@
     Storage.setText(Storage.KEYS.pendingSettings, serialized);
     const response = await Api.post(Contracts.Actions.SAVE_SETTINGS, { settingsData: serialized });
     Storage.remove(Storage.KEYS.pendingSettings);
+    Storage.setText(Storage.KEYS.settingsFetchedAt, Date.now());
+    Storage.remove(Storage.KEYS.entitiesDirectory);
+    Storage.remove(Storage.KEYS.entitiesFetchedAt);
     return response;
   }
 
@@ -82,7 +91,7 @@
   }
 
   MW.SettingsRepository = Object.freeze({
-    loadLocal, ensureDefaults, saveLocal, fetchCloud, saveCloud, retryPending,
+    loadLocal, ensureDefaults, saveLocal, isCloudFresh, fetchCloud, saveCloud, retryPending,
     exportLegacyBundle, fromLegacyBundle
   });
 })(window.MedWaste);

@@ -321,12 +321,12 @@ async function main() {
         const requestId = capturedGet.searchParams.get('requestId');
         return { ok: true, text: async () => JSON.stringify({
           result: 'success', message: 'OK', requestId,
-          contractVersion: '1.5', version: '8.1.1', appVersion: '8.1.1', environment: 'production'
+          contractVersion: '1.8', version: '8.1.6', appVersion: '8.1.6', environment: 'production'
         }) };
       }
       capturedPost = options.body;
       const requestId = capturedPost.get('requestId');
-      return { ok: true, text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.5', appVersion: '8.1.1' }) };
+      return { ok: true, text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.8', appVersion: '8.1.6' }) };
     });
     loadFrontendCore(ctx);
     const MW = ctx.window.MedWaste;
@@ -334,16 +334,16 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.1.1', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.5', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.1.9', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.10', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.1.1', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.5', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.1.9', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.10', 'POST contractVersion missing');
   });
 
   await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
@@ -354,7 +354,7 @@ async function main() {
       capturedBody = options.body;
       const requestId = capturedBody.get('requestId');
       return { ok: true, text: async () => JSON.stringify({
-        result: 'success', requestId, contractVersion: '1.5', appVersion: '8.1.1', data: []
+        result: 'success', requestId, contractVersion: '1.8', appVersion: '8.1.6', data: []
       }) };
     });
     loadFrontendCore(ctx);
@@ -379,8 +379,8 @@ async function main() {
         text: async () => JSON.stringify({
           result: 'success',
           requestId: requestIds[0],
-          contractVersion: '1.5',
-          appVersion: '8.1.1'
+          contractVersion: '1.8',
+          appVersion: '8.1.2'
         })
       };
     });
@@ -420,13 +420,13 @@ async function main() {
           ok: true,
           text: async () => JSON.stringify({
             result: 'error', code: 'BUSY', message: 'busy', requestId,
-            contractVersion: '1.5', appVersion: '8.1.1', details: { retryAfterMs: 1800 }
+            contractVersion: '1.8', appVersion: '8.1.6', details: { retryAfterMs: 1800 }
           })
         };
       }
       return {
         ok: true,
-        text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.5', appVersion: '8.1.1' })
+        text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.8', appVersion: '8.1.6' })
       };
     });
     loadFrontendCore(ctx);
@@ -528,7 +528,7 @@ async function main() {
       const body = options.body;
       const requestId = body.get('requestId');
       return { ok: true, text: async () => JSON.stringify({
-        result: 'success', requestId, contractVersion: '1.5', appVersion:'8.1.1', data: [{
+        result: 'success', requestId, contractVersion: '1.8', appVersion:'8.1.2', data: [{
           recordId: 'rec-cloud', tripId: 'trip-cloud', reportDate: '2026-08-11',
           driverName: 'D', carNumber: 'C', facilityMainType: 'G', subFacilityName: 'F', facilityId:'FAC-1',
           visitType: 'V', wasteWeight: 1, weightUnit: 'kg', tripReference:'MW-1', entrySource:'facility'
@@ -559,7 +559,7 @@ async function main() {
       return {
         ok: true,
         text: async () => JSON.stringify({
-          result: 'success', requestId, contractVersion: '1.5', appVersion: '8.1.1',
+          result: 'success', requestId, contractVersion: '1.8', appVersion: '8.1.6',
           data: [{
             recordId: `rec-${page}`, tripId: `trip-${page}`, reportDate: '2026-08-11',
             treatmentUnit: 'U', driverName: 'D', carNumber: 'C', facilityMainType: 'G',
@@ -872,7 +872,9 @@ async function main() {
     const viewHtml = read('view.html');
     const reportsHtml = read('reports.html');
     assert(!/id="treatmentUnit"/.test(indexHtml), 'manual treatment-unit selector still exists in intake form');
-    assert(/id="tripReference"/.test(indexHtml), 'trip reference input missing');
+    assert(!/id="tripReference"/.test(indexHtml), 'manual trip reference input still exists');
+    const tripFormJs = fs.readFileSync(path.join(ROOT, 'assets/js/features/trips/trip-form.js'), 'utf8');
+    assert(!/currentReference\s*\(/.test(tripFormJs), 'manual reference reader still exists in intake form');
     assert(/id="facilityId"/.test(registerHtml), 'facility assignment missing from registration');
     assert(/data-source="facility"/.test(viewHtml) && /data-source="treatment"/.test(viewHtml), 'view source switch missing');
     assert(/data-source="facility"/.test(reportsHtml) && /data-source="treatment"/.test(reportsHtml), 'reports source switch missing');
@@ -885,14 +887,22 @@ async function main() {
     assert(/tab-treatment/.test(indexHtml), 'treatment-unit settings tab missing');
   });
 
-  await test('Stage 8.1.1 reconciliation uses the same complete cascading facility lists as intake', () => {
+  await test('Stage 8.1.2 reconciliation uses the same complete cascading facility lists as intake', () => {
     const js = read('assets/js/pages/reconciliation.js');
     assert(js.includes('settings.healthAdmins') && js.includes('settings.govFacilities') && js.includes('settings.privateFacilities') && js.includes('settings.privateCompanies'), 'reconciliation is not sourcing the same facility lists as intake');
     assert(js.includes("mainType==='إدارات صحية'") && js.includes('healthAdmin'), 'health-administration cascade missing from reconciliation');
     assert(!js.includes('treatmentUnits') && !js.includes('treatmentUnitSelect'), 'reconciliation selector includes treatment units');
   });
 
-  await test('Stage 8.1.1 claims UI supports administration aggregate and has no treatment-unit billing path', () => {
+  await test('Stage 8.1.2 reconciliation offers whole-administration or single-unit mode', () => {
+    const html = read('reconciliation.html');
+    const js = read('assets/js/pages/reconciliation.js');
+    assert(/name="adminScope"[^>]*value="admin"/.test(html) && /name="adminScope"[^>]*value="unit"/.test(html), 'administration scope selector missing');
+    assert(js.includes('Contracts.EntityTypes.HEALTH_ADMIN') && js.includes('isWholeAdminMode'), 'whole-administration comparison request missing');
+    assert(js.includes("facilityBox.classList.add('hidden')"), 'unit selector is not hidden for whole-administration mode');
+  });
+
+  await test('Stage 8.1.2 claims UI supports administration aggregate and has no treatment-unit billing path', () => {
     const page = read('assets/js/pages/facility_report.js');
     const service = read('assets/js/features/claims/claims.service.js');
     assert(page.includes('authorizeHealthAdmin') && page.includes("mainType === 'إدارات صحية'"), 'aggregated health-administration claim path missing');
@@ -900,20 +910,13 @@ async function main() {
     assert(page.includes("r.healthAdmin !== selectedAdmin"), 'administration report does not aggregate records by parent administration');
   });
 
-  await test('Stage 8.1 treatment batch keeps a separate trip reference per facility', () => {
-    const ctx = frontendContext();
-    ['assets/js/core/namespace.js','assets/js/domain/record.entity.js','assets/js/domain/trip.entity.js'].forEach(file => load(ctx, file));
-    const records = ctx.window.MedWaste.TripEntity.createRecords(
-      {reportDate:'2026-08-12',driverName:'D',carNumber:'C'},
-      [
-        {facilityId:'FAC-1',subFacilityName:'A',facilityMainType:'G',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم',tripReference:'MW-A'},
-        {facilityId:'FAC-2',subFacilityName:'B',facilityMainType:'G',visitType:'نقل نفايات',wasteWeight:7,weightUnit:'كجم',tripReference:'MW-B'}
-      ],
-      {generateId: prefix => `${prefix}${crypto.randomUUID()}`,entrySource:'treatment',createdBy:'Tester',timestamp:'2026-08-12T00:00:00Z'}
-    );
-    assert(records.length === 2, 'batch record count changed');
-    assert(records[0].tripReference === 'MW-A' && records[1].tripReference === 'MW-B', 'per-facility references were collapsed into one reference');
-    assert(records[0].tripId === records[1].tripId, 'records in the same treatment route lost their common tripId');
+  await test('Stage 8.1.5 trip references are internal and generated automatically for both sources', () => {
+    const service = read('assets/js/features/trips/trips.service.js');
+    const form = read('assets/js/features/trips/trip-form.js');
+    const html = read('index.html');
+    assert(!html.includes('id="tripReference"') && !html.includes('مرجع الرحلة للمطابقة'), 'manual trip-reference input still exists');
+    assert(!form.includes('currentReference()') && !form.includes('مرجع الرحلة الصادر من المنشأة مطلوب'), 'treatment form still requires a manual reference');
+    assert(service.includes("makeReference(route.reportDate,source)"), 'automatic internal reference generation missing');
   });
 
   await test('Stage 8.1 backend forces facility identity from authenticated account', () => {
@@ -926,10 +929,10 @@ async function main() {
     const r = ctx.canonicalRecordForActor_({reportDate:'2026-08-12',facilityId:'FAC-HACK',subFacilityName:'Hacked',treatmentUnit:'Other',treatmentUnitId:'TRT-HACK'},auth,'facility',{});
     assert(r.facilityId === 'FAC-OWN' && r.subFacilityName === 'Own Facility', 'facility user could spoof another facility');
     assert(r.treatmentUnitId === '' && r.treatmentUnit === '', 'facility input retained a spoofed treatment unit');
-    assert(/^MW-20260812-/.test(r.tripReference), 'facility-side reference was not generated');
+    assert(/^MW-F-20260812-/.test(r.tripReference), 'facility-side internal reference was not generated');
   });
 
-  await test('Stage 8.1 backend forces treatment unit and requires facility trip reference', () => {
+  await test('Stage 8.1.5 backend forces treatment unit and generates its internal reference', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs','Validators.gs'].forEach(file => load(ctx, file));
     ctx.entityRepositoryFindById_ = id => {
@@ -943,19 +946,53 @@ async function main() {
     const r = ctx.canonicalRecordForActor_({reportDate:'2026-08-12',facilityId:'FAC-1',treatmentUnit:'Spoofed Unit',treatmentUnitId:'TRT-HACK',tripReference:''},auth,'treatment',{});
     assert(r.treatmentUnitId === 'TRT-OWN' && r.treatmentUnit === 'Own Unit', 'treatment user could spoof another treatment unit');
     const invalid = ctx.validateRecordInput_(Object.assign(r,{driverName:'D',carNumber:'C',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'}),'treatment');
-    assert(invalid && invalid.result === 'error' && /مرجع الرحلة/.test(invalid.message), 'treatment entry accepted without facility trip reference');
+    assert(invalid === null, 'valid treatment entry was rejected');
+    assert(/^MW-T-20260812-/.test(r.tripReference), 'treatment-side internal reference was not generated');
   });
 
-  await test('Stage 8.1 reconciliation blocks equal daily totals when trip references are incomplete', () => {
+  await test('Stage 8.1.8 full-admin UI uses stable generic reconciliation action', () => {
+  const repo = read('assets/js/data/repositories/reconciliation.repository.js');
+  assert(repo.includes("Contracts.Actions.GET_RECONCILIATION"));
+  const fn = repo.match(/async function compareHealthAdmin\(filters\)\{([^}]|}[^;])*?\}/s);
+  assert(repo.includes("entityType:Contracts.EntityTypes.HEALTH_ADMIN"));
+  assert(repo.includes("adminScope:'admin'"));
+});
+
+test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and authorized', () => {
+    const backendContracts = fs.readFileSync(path.join(ROOT, 'Contracts.gs'), 'utf8');
+    const router = fs.readFileSync(path.join(ROOT, 'Router.gs'), 'utf8');
+    const frontendContracts = fs.readFileSync(path.join(ROOT, 'assets/js/core/contracts.js'), 'utf8');
+    const repo = fs.readFileSync(path.join(ROOT, 'assets/js/data/repositories/reconciliation.repository.js'), 'utf8');
+    const page = fs.readFileSync(path.join(ROOT, 'assets/js/pages/reconciliation.js'), 'utf8');
+    assert(/GET_HEALTH_ADMIN_RECONCILIATION:\s*'get_health_admin_reconciliation'/.test(backendContracts), 'backend dedicated admin action missing');
+    assert(/get_health_admin_reconciliation:\s*\[ROLES\.SUPERVISOR,\s*ROLES\.ADMIN\]/.test(backendContracts), 'admin reconciliation RBAC missing');
+    assert(/case API_ACTIONS\.GET_HEALTH_ADMIN_RECONCILIATION:[\s\S]*getHealthAdminReconciliation_\(params\)/.test(router), 'router does not dispatch dedicated admin reconciliation');
+    assert(/GET_HEALTH_ADMIN_RECONCILIATION:'get_health_admin_reconciliation'/.test(frontendContracts), 'frontend dedicated admin action missing');
+    assert(/compareHealthAdmin/.test(repo), 'reconciliation repository lacks dedicated admin request');
+    assert(/wholeAdmin\?Reconciliation\.compareHealthAdmin\(filters\):Reconciliation\.compare\(filters\)/.test(page), 'admin mode still uses generic facility reconciliation request');
+  });
+
+  await test('Stage 8.1.5 reconciliation auto-matches different internal references by facility, day and weight', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
     load(ctx, 'Reconciliation.gs');
     const result = ctx.buildReconciliationFromRecords_(
-      [{facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-1',visitType:'نقل نفايات',wasteWeight:10,weightUnit:'كجم'}, {facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'}],
-      [{facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-1',visitType:'نقل نفايات',wasteWeight:10,weightUnit:'كجم'}, {facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'}]
+      [{recordId:'F1',facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-F-X',visitType:'نقل نفايات',wasteWeight:10,weightUnit:'كجم'}, {recordId:'F2',facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-F-Y',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'}],
+      [{recordId:'T1',facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-T-A',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'}, {recordId:'T2',facilityId:'FAC-1',reportDate:'2026-08-12',tripReference:'MW-T-B',visitType:'نقل نفايات',wasteWeight:10,weightUnit:'كجم'}]
     );
-    assert(result.summary.differenceKg === 0, 'test fixture daily totals are not equal');
-    assert(result.summary.matched === false && result.days[0].status === 'PARTIAL', 'aggregate equality bypassed trip-level reconciliation');
+    assert(result.summary.matched === true && result.days[0].tripMatches.every(x => x.matched), 'automatic one-to-one matching failed');
+  });
+
+  await test('Stage 8.1.5 equal daily totals cannot hide different trip weights', () => {
+    const ctx = backendContext();
+    ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
+    load(ctx, 'Reconciliation.gs');
+    const result = ctx.buildReconciliationFromRecords_(
+      [{facilityId:'FAC-1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:60,weightUnit:'كجم'}, {facilityId:'FAC-1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:40,weightUnit:'كجم'}],
+      [{facilityId:'FAC-1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:50,weightUnit:'كجم'}, {facilityId:'FAC-1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:50,weightUnit:'كجم'}]
+    );
+    assert(result.summary.differenceKg === 0, 'fixture totals are not equal');
+    assert(result.summary.matched === false && result.days[0].status === 'WEIGHT_MISMATCH', 'equal totals bypassed trip-level auto matching');
   });
 
   await test('Stage 8.1 claim authorization is blocked by reconciliation mismatch', () => {
@@ -971,7 +1008,7 @@ async function main() {
     assert(result.result === 'error' && result.code === 'RECONCILIATION_REQUIRED', 'mismatched facility claim was authorized');
   });
 
-  await test('Stage 8.1.1 treatment-unit claims are rejected by backend', () => {
+  await test('Stage 8.1.2 treatment-unit claims are rejected by backend', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
     ctx.requireActionAuth_ = () => ({ok:true,user:{role:'مدير',email:'admin@example.com',fullName:'Admin'}});
@@ -982,10 +1019,29 @@ async function main() {
     assert(/لا تُصدر مطالبات لوحدات المعالجة/.test(result.message), 'treatment-unit rejection message is unclear');
   });
 
-  await test('Stage 8.1.1 health-administration reconciliation includes every unit and remains strict per facility', () => {
+  await test('Stage 8.1.2 reconciliation endpoint accepts a full health administration scope', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
     load(ctx, 'Reconciliation.gs');
+    ctx.requireActionAuth_ = () => ({ok:true,auth:{user:{role:'مشرف'}}});
+    ctx.normalizeDate_ = v => String(v||'');
+    ctx.isValidIsoDate_ = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v||''));
+    ctx.knownHealthAdmin_ = name => name === 'إدارة أ';
+    ctx.buildHealthAdminReconciliation_ = (name,start,end) => ({summary:{matched:true,facilitiesCount:2},days:[],marker:[name,start,end]});
+    const out = ctx.getReconciliation_({entityType:'health_admin',entityId:'إدارة أ',startDate:'2026-08-01',endDate:'2026-08-31'});
+    assert(out.result === 'success', 'full health-administration reconciliation was rejected');
+    assert(out.data.scope.entityType === 'health_admin' && out.data.scope.entityId === 'إدارة أ', 'health-administration scope metadata missing');
+    assert(out.data.marker[0] === 'إدارة أ', 'health administration was not passed to reconciliation builder');
+  });
+
+  await test('Stage 8.1.2 health-administration reconciliation includes every unit and remains strict per facility', () => {
+    const ctx = backendContext();
+    ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
+    load(ctx, 'Reconciliation.gs');
+    ctx.recordsRevision_ = () => 'test-rev';
+    ctx.sha256Hex_ = value => '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    ctx.cacheGetJson_ = () => null;
+    ctx.cachePutJson_ = () => {};
     ctx.recordRepositoryFindScoped_ = (source, filters) => {
       assert(filters.healthAdmin === 'إدارة أ', 'health administration filter was not passed to repository');
       if (source === 'facility') return [
@@ -1002,7 +1058,7 @@ async function main() {
     assert(result.summary.matched === false && result.summary.unmatchedDays === 1, 'one unit mismatch did not block aggregate administration reconciliation');
   });
 
-  await test('Stage 8.1.1 health-administration units cannot be claimed individually', () => {
+  await test('Stage 8.1.2 health-administration units cannot be claimed individually', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
     ctx.requireActionAuth_ = () => ({ok:true,user:{role:'مدير',email:'admin@example.com',fullName:'Admin'}});
@@ -1017,6 +1073,9 @@ async function main() {
   await test('Stage 8.1 entity rename preserves existing entity ID', () => {
     const ctx = backendContext();
     ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx, file));
+    ctx.cacheRemove_ = () => {};
+    ctx.cacheGetJson_ = () => null;
+    ctx.cachePutJson_ = () => {};
     load(ctx, 'EntityRepository.gs');
     const operations = [];
     const current = [ctx.ENTITY_HEADERS, ['FAC-PERSIST','facility','منشأت حكومية','','Old Name',true,new Date(),new Date()]];
@@ -1037,6 +1096,65 @@ async function main() {
     assert(!operations.some(op => op.type === 'setValues' && op.col === 1), 'rename inserted a new entity row and therefore changed the ID');
   });
 
+  await test('Stage 8.1.7 backend accepts own administration unit and rejects foreign unit', () => {
+    const ctx = backendContext();
+    ['Config.gs','Contracts.gs','Utils.gs','Validators.gs'].forEach(file => load(ctx,file));
+    ctx.entityRepositoryFindById_ = id => {
+      if (id === 'ADM-A') return {entity:{entityId:'ADM-A',entityType:'health_admin',name:'إدارة أ',active:true}};
+      if (id === 'FAC-A1') return {entity:{entityId:'FAC-A1',entityType:'facility',mainType:'إدارات صحية',healthAdmin:'إدارة أ',name:'وحدة أ1',active:true}};
+      if (id === 'FAC-B1') return {entity:{entityId:'FAC-B1',entityType:'facility',mainType:'إدارات صحية',healthAdmin:'إدارة ب',name:'وحدة ب1',active:true}};
+      return null;
+    };
+    ctx.entityRepositoryResolveFacility_ = () => null;
+    load(ctx,'Records.gs');
+    const auth={user:{role:'مدخل منشأة',entityType:'health_admin',entityId:'ADM-A',fullName:'Admin Entry'}};
+    const own=ctx.canonicalRecordForActor_({reportDate:'2026-08-12',facilityId:'FAC-A1'},auth,'facility',{});
+    assert(own.facilityId==='FAC-A1'&&own.healthAdmin==='إدارة أ','own administration unit was not canonicalized');
+    let rejected=false;
+    try{ctx.canonicalRecordForActor_({reportDate:'2026-08-12',facilityId:'FAC-B1'},auth,'facility',{});}catch(err){rejected=err&&err.code==='FORBIDDEN';}
+    assert(rejected,'foreign administration unit was accepted');
+  });
+
+  await test('Stage 8.1.7 duplicate health-administration registration is rejected', () => {
+    const ctx=backendContext();
+    ['Config.gs','Contracts.gs','Utils.gs'].forEach(file=>load(ctx,file));
+    ctx.validateRegistrationInput_=()=>null;
+    ctx.normalizeEmail_=v=>String(v||'').trim().toLowerCase();
+    ctx.withScriptLock_=(_n,fn)=>fn();
+    ctx.userRepositoryFindByEmail_=()=>null;
+    ctx.userRepositoryIsEmpty_=()=>false;
+    ctx.entityRepositoryFindById_=()=>({entity:{entityId:'ADM-A',entityType:'health_admin',name:'إدارة أ',active:true}});
+    ctx.userRepositoryFindByAssignment_=()=>({user:{email:'old@example.com'}});
+    ctx.safeAuditEvent_=()=>{};
+    ctx.hashPassword_=v=>'hash:'+v;
+    ctx.userRepositoryAppend_=()=>{throw new Error('should not append duplicate admin assignment');};
+    load(ctx,'Auth.gs');
+    const out=ctx.register_({fullName:'New',email:'new@example.com',password:'12345678',entityId:'ADM-A'});
+    assert(out.result==='error'&&out.code==='ASSIGNMENT_CONFLICT','duplicate administration assignment was not rejected');
+  });
+
+  await test('Stage 8.1.7 registration offers whole health administrations instead of their units', () => {
+    const registerJs = read('assets/js/pages/register.js');
+    const entitiesGs = read('Entities.gs');
+    assert(registerJs.includes("type==='إدارات صحية'?healthAdmins"), 'registration does not switch to health administration entities');
+    assert(entitiesGs.includes("healthAdmins: entityRepositoryList_(ENTITY_TYPES.HEALTH_ADMIN"), 'registration endpoint does not expose health administrations');
+    assert(entitiesGs.includes("x.mainType !== 'إدارات صحية'"), 'health-unit facilities are still independently registrable');
+  });
+
+  await test('Stage 8.1.7 one account per health administration is enforced server-side', () => {
+    const users = read('Users.gs');
+    const auth = read('Auth.gs');
+    assert(users.includes('userRepositoryFindByAssignment_') && users.includes('ASSIGNMENT_CONFLICT'), 'admin assignment uniqueness is not enforced in user updates');
+    assert(auth.includes('userRepositoryFindByAssignment_') && auth.includes('ASSIGNMENT_CONFLICT'), 'admin assignment uniqueness is not enforced during registration');
+  });
+
+  await test('Stage 8.1.7 administration account can select only its own units at intake', () => {
+    const form = read('assets/js/features/trips/trip-form.js');
+    const records = read('Records.gs');
+    assert(form.includes('isHealthAdminEntry') && form.includes("getSettings().healthAdmins?.[assignedAdminName()]"), 'administration intake does not restrict the unit list to the assigned administration');
+    assert(records.includes("fac.healthAdmin") && records.includes("adminFound.entity.name") && records.includes('FORBIDDEN'), 'backend does not independently enforce administration-unit ownership');
+  });
+
   await test('Stage 8.1 backups keep facility and treatment local stores separate', () => {
     const src = read('assets/js/features/settings/settings.manager.js');
     assert(src.includes('dakahlia_facility_entry_records'), 'facility-entry backup key missing');
@@ -1044,10 +1162,38 @@ async function main() {
     assert(src.includes('Contracts.EntrySources.FACILITY') && src.includes('Contracts.EntrySources.TREATMENT'), 'backup restore is not source-aware');
   });
 
+  await test('Stage 8.1.9 health administration can never fall through to facility validation', () => {
+    const ctx = backendContext();
+    ['Config.gs','Contracts.gs','Utils.gs'].forEach(file => load(ctx,file));
+    ctx.settingsRepositoryRead_ = () => ({healthAdmins:{'إدارة أ':['وحدة 1']}});
+    ctx.requireActionAuth_ = () => ({ok:true,user:{role:'مدير'}});
+    ctx.recordsRevision_ = () => 1;
+    ctx.cacheGetJson_ = () => null;
+    ctx.cachePutJson_ = () => {};
+    ctx.sha256Hex_ = () => 'a'.repeat(64);
+    ctx.recordRepositoryFindScoped_ = () => [];
+    load(ctx,'Reconciliation.gs');
+    ctx.buildHealthAdminReconciliation_ = admin => ({summary:{matched:true,facilitiesCount:1},days:[],_admin:admin});
+    const variants = [
+      {entityType:'health_admin',entityId:'إدارة أ'},
+      {entityType:'facility',entityId:'إدارة أ'},
+      {healthAdmin:'إدارة أ'},
+      {adminScope:'admin',healthAdmin:'إدارة أ'},
+      {scopeType:'health_admin',entityId:'إدارة أ'},
+      {compareMode:'health_admin',entityId:'إدارة أ'},
+      {facilityMainType:'إدارات صحية',entityId:'إدارة أ'}
+    ];
+    for (const params of variants) {
+      const out = ctx.getReconciliation_(params);
+      assert(out.result === 'success', `administration scope fell through: ${JSON.stringify(params)} => ${JSON.stringify(out)}`);
+      assert(out.data.scope.entityType === 'health_admin', 'administration scope metadata missing');
+    }
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
-      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Security.gs', 'Validators.gs',
+      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Cache.gs', 'Security.gs', 'Validators.gs',
       'AccessControl.gs', 'Audit.gs', 'RecordMapper.gs', 'UserMapper.gs',
       'EntityRepository.gs', 'Reconciliation.gs', 'Records.gs', 'Idempotency.gs', 'Router.gs', 'SelfTests.gs'
     ].forEach(file => load(ctx, file));
@@ -1061,13 +1207,13 @@ async function main() {
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.1.1', contractVersion: '1.5', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.1.9', contractVersion: '1.10', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.1.1', 'health version mismatch');
-    assert(data.appVersion === '8.1.1', 'response appVersion missing');
-    assert(data.contractVersion === '1.5', 'health contract version mismatch');
+    assert(data.version === '8.1.9', 'health version mismatch');
+    assert(data.appVersion === '8.1.9', 'response appVersion missing');
+    assert(data.contractVersion === '1.10', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });

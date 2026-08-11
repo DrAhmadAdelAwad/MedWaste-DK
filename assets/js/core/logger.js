@@ -4,7 +4,7 @@
   const Config = MW.Config || {};
   const LEVELS = Object.freeze({ debug: 10, info: 20, warn: 30, error: 40, silent: 100 });
   const REDACTED = '[REDACTED]';
-  const SENSITIVE_KEY = /(password|pass|token|secret|authorization|credential)/i;
+  const SENSITIVE_KEY = /(password|token|secret|authorization|credential)/i;
 
   function configuredLevel() {
     const value = String(Config.logLevel || 'warn').toLowerCase();

@@ -1,16 +1,16 @@
 /**
  * Application settings use cases.
- * Persistence is delegated to SettingsRepository.gs.
+ * Stage 8 uses centralized authorization and records administrative changes.
  */
 
 function getSettings_(p) {
-  var auth = requireAuth_(p);
+  var auth = requireActionAuth_(p, API_ACTIONS.GET_SETTINGS);
   if (!auth.ok) return auth.error;
   return success_({data: settingsRepositoryRead_()});
 }
 
 function saveSettings_(p) {
-  var auth = requireAuth_(p, [ROLES.ADMIN]);
+  var auth = requireActionAuth_(p, API_ACTIONS.SAVE_SETTINGS);
   if (!auth.ok) return auth.error;
 
   var raw = clean_(p.settingsData);
@@ -29,6 +29,12 @@ function saveSettings_(p) {
 
   return withScriptLock_('save_settings', function () {
     settingsRepositoryWrite_(obj);
+    safeAuditEvent_({
+      params: p, auth: auth, action: API_ACTIONS.SAVE_SETTINGS,
+      event: 'SETTINGS_UPDATED', result: 'SUCCESS',
+      targetType: 'settings', targetId: 'central',
+      metadata: {keys: SETTINGS_KEYS.slice()}
+    });
     return success_();
   });
 }

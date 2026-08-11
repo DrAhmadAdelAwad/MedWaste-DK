@@ -26,7 +26,7 @@
 
   async function retryPending() {
     const user = Session.getUser();
-    if (!user || user.role !== Contracts.Roles.ADMIN) return false;
+    if (!user || !Contracts.canRole(user.role, Contracts.Actions.SAVE_SETTINGS)) return false;
     return SettingsRepository.retryPending();
   }
 

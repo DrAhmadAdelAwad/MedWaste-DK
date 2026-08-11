@@ -66,7 +66,7 @@ function ensureDataSheet_(ss) {
     // Prefer the legacy data sheet by recognizing its headers instead of relying on tab order.
     for (var i = 0; i < sheets.length; i++) {
       var n = sheets[i].getName();
-      if (n === USERS_SHEET || n === SETTINGS_SHEET || n === SESSIONS_SHEET || n === IDEMPOTENCY_SHEET) continue;
+      if (n === USERS_SHEET || n === SETTINGS_SHEET || n === SESSIONS_SHEET || n === IDEMPOTENCY_SHEET || n === AUDIT_SHEET) continue;
       if (!fallback) fallback = sheets[i];
 
       if (sheets[i].getLastRow() > 0 && sheets[i].getLastColumn() >= 5) {
@@ -241,6 +241,30 @@ function ensureIdempotencySheet_(ss) {
   } else if (!__sheetSchemaReady_[IDEMPOTENCY_SHEET]) {
     if (sheet.getLastRow() === 0) sheet.getRange(1, 1, 1, IDEMPOTENCY_HEADERS.length).setValues([IDEMPOTENCY_HEADERS]);
     __sheetSchemaReady_[IDEMPOTENCY_SHEET] = true;
+  }
+  return sheet;
+}
+
+
+function ensureAuditSheet_(ss) {
+  ss = ss || getSpreadsheet_();
+  var sheet = cachedSheet_(ss, AUDIT_SHEET);
+  if (!sheet) {
+    sheet = rememberSheet_(AUDIT_SHEET, ss.insertSheet(AUDIT_SHEET));
+    sheet.getRange(1, 1, 1, AUDIT_HEADERS.length).setValues([AUDIT_HEADERS]);
+    try { sheet.hideSheet(); } catch (err) {}
+    __sheetSchemaReady_[AUDIT_SHEET] = true;
+  } else if (!__sheetSchemaReady_[AUDIT_SHEET]) {
+    if (sheet.getLastRow() === 0) {
+      sheet.getRange(1, 1, 1, AUDIT_HEADERS.length).setValues([AUDIT_HEADERS]);
+    } else {
+      var current = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), AUDIT_HEADERS.length)).getValues()[0];
+      for (var i = 0; i < AUDIT_HEADERS.length; i++) {
+        if (clean_(current[i]) !== AUDIT_HEADERS[i]) sheet.getRange(1, i + 1).setValue(AUDIT_HEADERS[i]);
+      }
+    }
+    try { sheet.hideSheet(); } catch (err) {}
+    __sheetSchemaReady_[AUDIT_SHEET] = true;
   }
   return sheet;
 }

@@ -1,7 +1,7 @@
 {
   "name": "medwaste-dk",
   "private": true,
-  "version": "7.0.0",
+  "version": "8.0.0",
   "description": "MedWaste DK Stage 7 production-hardening regression and architecture tests",
   "scripts": {
     "test": "node tests/run-tests.js"

@@ -34,7 +34,7 @@
   }
 
   async function fetchCloud(defaults) {
-    const response = await Api.get(Contracts.Actions.GET_SETTINGS);
+    const response = await Api.read(Contracts.Actions.GET_SETTINGS);
     if (response.result !== 'success' || !response.data) return null;
     return SettingsMapper.fromApi(response.data, defaults);
   }

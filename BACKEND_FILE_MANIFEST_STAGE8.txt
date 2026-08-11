@@ -1,0 +1,39 @@
+MedWaste DK — Stage 8 Backend Manifest
+============================================
+
+Application Version: 8.0
+API Contract: 1.3
+Backend files: 29
+
+01. AccessControl.gs
+02. Audit.gs
+03. AuditRepository.gs
+04. Auth.gs
+05. Cache.gs
+06. Code.gs
+07. Concurrency.gs
+08. Config.gs
+09. Contracts.gs
+10. Idempotency.gs
+11. IdempotencyRepository.gs
+12. Logging.gs
+13. RateLimit.gs
+14. RecordMapper.gs
+15. RecordRepository.gs
+16. Records.gs
+17. Router.gs
+18. Security.gs
+19. SelfTests.gs
+20. SessionRepository.gs
+21. Sessions.gs
+22. Settings.gs
+23. SettingsRepository.gs
+24. Sheets.gs
+25. UserMapper.gs
+26. UserRepository.gs
+27. Users.gs
+28. Utils.gs
+29. Validators.gs
+
+All files must exist inside the SAME Google Apps Script project.
+Do not upload Code.gs alone.

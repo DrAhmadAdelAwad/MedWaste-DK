@@ -46,6 +46,7 @@ function load(context, rel) {
 
 function frontendContext(fetchImpl) {
   const store = new Map();
+  const sessionStore = new Map();
   class FakeFormData {
     constructor() { this.map = new Map(); }
     append(key, value) { this.map.set(String(key), String(value)); }
@@ -75,6 +76,11 @@ function frontendContext(fetchImpl) {
       getItem: key => store.has(key) ? store.get(key) : null,
       setItem: (key, value) => store.set(String(key), String(value)),
       removeItem: key => store.delete(String(key))
+    },
+    sessionStorage: {
+      getItem: key => sessionStore.has(String(key)) ? sessionStore.get(String(key)) : null,
+      setItem: (key, value) => sessionStore.set(String(key), String(value)),
+      removeItem: key => sessionStore.delete(String(key))
     }
   });
   win.window = win;
@@ -105,6 +111,7 @@ function loadFrontendCore(context) {
     'assets/js/data/repositories/auth.repository.js',
     'assets/js/data/repositories/settings.repository.js',
     'assets/js/data/repositories/users.repository.js',
+    'assets/js/data/repositories/audit.repository.js',
     'assets/js/core/diagnostics.js'
   ].forEach(file => load(context, file));
 }
@@ -131,7 +138,10 @@ function backendContext() {
     },
     Utilities: {
       getUuid: () => crypto.randomUUID(),
-      formatDate: date => new Date(date).toISOString().slice(0, 10)
+      formatDate: date => new Date(date).toISOString().slice(0, 10),
+      DigestAlgorithm: { SHA_256: 'SHA_256' },
+      Charset: { UTF_8: 'UTF_8' },
+      computeDigest: (_alg, value) => Array.from(crypto.createHash('sha256').update(String(value), 'utf8').digest())
     },
     Session: { getScriptTimeZone: () => 'Africa/Cairo' }
   });
@@ -216,7 +226,10 @@ async function main() {
       const src = fs.readFileSync(file, 'utf8');
       const rel = path.relative(ROOT, file).replace(/\\/g, '/');
       if (rel !== 'assets/js/core/api.js') assert(!/\bfetch\s*\(/.test(src), `fetch outside api.js: ${rel}`);
-      if (rel !== 'assets/js/core/storage.js') assert(!/\blocalStorage\b/.test(src), `localStorage outside storage.js: ${rel}`);
+      if (rel !== 'assets/js/core/storage.js') {
+        assert(!/\blocalStorage\b/.test(src), `localStorage outside storage.js: ${rel}`);
+        assert(!/\bsessionStorage\b/.test(src), `sessionStorage outside storage.js: ${rel}`);
+      }
       if (rel !== 'assets/js/core/logger.js') assert(!/console\.(debug|info|warn|error|log)\s*\(/.test(src), `console outside logger.js: ${rel}`);
     }
   });
@@ -235,14 +248,15 @@ async function main() {
 
   let frontContracts;
   let backContracts;
-  await test('Stage 7 backend installation manifest is complete', () => {
+  await test('Stage 8 backend installation manifest is complete', () => {
     const ctx = backendContext();
     const files = [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Concurrency.gs', 'Cache.gs',
-      'Security.gs', 'Validators.gs', 'RecordMapper.gs', 'UserMapper.gs', 'Sheets.gs',
-      'RecordRepository.gs', 'UserRepository.gs', 'SettingsRepository.gs', 'SessionRepository.gs',
-      'IdempotencyRepository.gs', 'Sessions.gs', 'Auth.gs', 'Records.gs', 'Settings.gs', 'Users.gs',
-      'Idempotency.gs', 'Router.gs', 'SelfTests.gs', 'Code.gs'
+      'Security.gs', 'RateLimit.gs', 'Validators.gs', 'AccessControl.gs', 'Audit.gs',
+      'RecordMapper.gs', 'UserMapper.gs', 'Sheets.gs', 'RecordRepository.gs', 'UserRepository.gs',
+      'SettingsRepository.gs', 'SessionRepository.gs', 'IdempotencyRepository.gs', 'AuditRepository.gs',
+      'Sessions.gs', 'Auth.gs', 'Records.gs', 'Settings.gs', 'Users.gs', 'Idempotency.gs',
+      'Router.gs', 'SelfTests.gs', 'Code.gs'
     ];
     files.forEach(file => load(ctx, file));
     const result = ctx.verifyBackendInstallation();
@@ -262,6 +276,7 @@ async function main() {
       version: bctx.API_CONTRACT_VERSION,
       actions: JSON.parse(JSON.stringify(bctx.API_ACTIONS)),
       roles: JSON.parse(JSON.stringify(bctx.ROLES)),
+      actionRoles: JSON.parse(JSON.stringify(bctx.ACTION_ROLES)),
       errorCodes: JSON.parse(JSON.stringify(bctx.ERROR_CODES)),
       limits: JSON.parse(JSON.stringify(bctx.API_LIMITS))
     };
@@ -269,6 +284,7 @@ async function main() {
     assert(frontContracts.version === backContracts.version, 'contract version mismatch');
     assert(JSON.stringify(frontContracts.Actions) === JSON.stringify(backContracts.actions), 'action mismatch');
     assert(JSON.stringify(frontContracts.Roles) === JSON.stringify(backContracts.roles), 'role mismatch');
+    assert(JSON.stringify(frontContracts.ActionRoles) === JSON.stringify(backContracts.actionRoles), 'authorization matrix mismatch');
     assert(JSON.stringify(frontContracts.ErrorCodes) === JSON.stringify(backContracts.errorCodes), 'error code mismatch');
     assert(JSON.stringify(frontContracts.Limits) === JSON.stringify(backContracts.limits), 'limit mismatch');
   });
@@ -302,29 +318,55 @@ async function main() {
       if (options.method === 'GET') {
         capturedGet = new URL(url);
         const requestId = capturedGet.searchParams.get('requestId');
-        return { ok: true, text: async () => JSON.stringify({ result: 'success', message: 'OK', requestId, contractVersion: '1.2', version: '7.0', environment: 'production' }) };
+        return { ok: true, text: async () => JSON.stringify({
+          result: 'success', message: 'OK', requestId,
+          contractVersion: '1.3', version: '8.0', appVersion: '8.0', environment: 'production'
+        }) };
       }
       capturedPost = options.body;
       const requestId = capturedPost.get('requestId');
-      return { ok: true, text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.2' }) };
+      return { ok: true, text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.3', appVersion: '8.0' }) };
     });
     loadFrontendCore(ctx);
     const MW = ctx.window.MedWaste;
+
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '7.0', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.2', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.0', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.3', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
-    await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret', requestId: 'spoofed', clientVersion: '0.0' });
+    await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '7.0', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.2', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.0', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.3', 'POST contractVersion missing');
   });
 
-  await test('Stage 7 API retries transient safe mutations with the same requestId', async () => {
+  await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
+    let capturedUrl = '';
+    let capturedBody = null;
+    const ctx = frontendContext(async (url, options) => {
+      capturedUrl = String(url);
+      capturedBody = options.body;
+      const requestId = capturedBody.get('requestId');
+      return { ok: true, text: async () => JSON.stringify({
+        result: 'success', requestId, contractVersion: '1.3', appVersion: '8.0', data: []
+      }) };
+    });
+    loadFrontendCore(ctx);
+    const MW = ctx.window.MedWaste;
+    MW.Session.setUser({fullName:'Admin', email:'admin@example.com', role:MW.Contracts.Roles.ADMIN, sessionToken:'session-secret'});
+    await MW.Api.read(MW.Contracts.Actions.GET_USERS);
+
+    assert(capturedBody instanceof FormData || typeof capturedBody.get === 'function', 'protected read did not use form body');
+    assert(capturedBody.get('token') === 'session-secret', 'protected read body missing token');
+    assert(!capturedUrl.includes('session-secret'), 'protected read leaked token into URL');
+  });
+
+  await test('Stage 8 API retries transient safe mutations with the same requestId', async () => {
     let attempts = 0;
     const requestIds = [];
     const ctx = frontendContext(async (_url, options) => {
@@ -336,8 +378,8 @@ async function main() {
         text: async () => JSON.stringify({
           result: 'success',
           requestId: requestIds[0],
-          contractVersion: '1.2',
-          appVersion: '7.0'
+          contractVersion: '1.3',
+          appVersion: '8.0'
         })
       };
     });
@@ -350,7 +392,7 @@ async function main() {
     assert(new Set(requestIds).size === 1, 'requestId changed across retries');
   });
 
-  await test('Stage 7 unsafe auth POST is not automatically retried', async () => {
+  await test('Stage 8 unsafe auth POST is not automatically retried', async () => {
     let attempts = 0;
     const ctx = frontendContext(async () => {
       attempts += 1;
@@ -366,7 +408,7 @@ async function main() {
   });
 
 
-  await test('Stage 7 API respects backend retryAfterMs hint for BUSY', async () => {
+  await test('Stage 8 API respects backend retryAfterMs hint for BUSY', async () => {
     let attempts = 0;
     const delays = [];
     const ctx = frontendContext(async (_url, options) => {
@@ -377,13 +419,13 @@ async function main() {
           ok: true,
           text: async () => JSON.stringify({
             result: 'error', code: 'BUSY', message: 'busy', requestId,
-            contractVersion: '1.2', appVersion: '7.0', details: { retryAfterMs: 1800 }
+            contractVersion: '1.3', appVersion: '8.0', details: { retryAfterMs: 1800 }
           })
         };
       }
       return {
         ok: true,
-        text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.2', appVersion: '7.0' })
+        text: async () => JSON.stringify({ result: 'success', requestId, contractVersion: '1.3', appVersion: '8.0' })
       };
     });
     loadFrontendCore(ctx);
@@ -487,7 +529,7 @@ async function main() {
       const requestUrl = new URL(url);
       const requestId = requestUrl.searchParams.get('requestId');
       return { ok: true, text: async () => JSON.stringify({
-        result: 'success', requestId, contractVersion: '1.2', data: [{
+        result: 'success', requestId, contractVersion: '1.3', data: [{
           recordId: 'rec-cloud', tripId: 'trip-cloud', reportDate: '2026-08-11', treatmentUnit: 'U',
           driverName: 'D', carNumber: 'C', facilityMainType: 'G', subFacilityName: 'F',
           visitType: 'V', wasteWeight: 1, weightUnit: 'kg'
@@ -506,18 +548,18 @@ async function main() {
     assert(merged.some(r => r.recordId === 'rec-pending' && r._syncStatus === 'pending'), 'pending local record was lost');
   });
 
-  await test('Stage 7 records repository follows paginated cloud responses', async () => {
+  await test('Stage 8 records repository follows paginated protected POST responses', async () => {
     const requestedPages = [];
-    const ctx = frontendContext(async (url) => {
-      const requestUrl = new URL(url);
-      const requestId = requestUrl.searchParams.get('requestId');
-      const page = Number(requestUrl.searchParams.get('page'));
+    const ctx = frontendContext(async (_url, options) => {
+      const body = options.body;
+      const requestId = body.get('requestId');
+      const page = Number(body.get('page'));
       requestedPages.push(page);
       const hasMore = page < 2;
       return {
         ok: true,
         text: async () => JSON.stringify({
-          result: 'success', requestId, contractVersion: '1.2',
+          result: 'success', requestId, contractVersion: '1.3', appVersion: '8.0',
           data: [{
             recordId: `rec-${page}`, tripId: `trip-${page}`, reportDate: '2026-08-11',
             treatmentUnit: 'U', driverName: 'D', carNumber: 'C', facilityMainType: 'G',
@@ -528,12 +570,14 @@ async function main() {
       };
     });
     loadFrontendCore(ctx);
-    const records = await ctx.window.MedWaste.RecordsRepository.fetchCloudPaged();
+    const MW = ctx.window.MedWaste;
+    MW.Session.setUser({fullName:'Supervisor', email:'sup@example.com', role:MW.Contracts.Roles.SUPERVISOR, sessionToken:'token'});
+    const records = await MW.RecordsRepository.fetchCloudPaged();
     assert(records.length === 2, `expected 2 paged records, got ${records.length}`);
     assert(JSON.stringify(requestedPages) === JSON.stringify([1, 2]), `unexpected pages ${JSON.stringify(requestedPages)}`);
   });
 
-  await test('Stage 7 contracts expose BUSY and pagination limits', () => {
+  await test('Stage 8 contracts expose BUSY and pagination limits', () => {
     const ctx = frontendContext();
     load(ctx, 'assets/js/core/namespace.js');
     load(ctx, 'assets/js/core/contracts.js');
@@ -565,7 +609,7 @@ async function main() {
     assert(!JSON.stringify(snap).includes('very-secret-token'), 'diagnostics leaked token');
   });
 
-  await test('Stage 7 backend idempotency replays completed mutation without repeating side effect', () => {
+  await test('Stage 8 backend idempotency replays completed mutation without repeating side effect', () => {
     const ctx = backendContext();
     ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs'].forEach(file => load(ctx, file));
     const store = new Map();
@@ -610,7 +654,7 @@ async function main() {
     assert(sideEffects === 1, `side effect executed ${sideEffects} times`);
   });
 
-  await test('Stage 7 concurrency helper returns BUSY when lock is unavailable', () => {
+  await test('Stage 8 concurrency helper returns BUSY when lock is unavailable', () => {
     const ctx = backendContext();
     ['Config.gs', 'Contracts.gs', 'Utils.gs'].forEach(file => load(ctx, file));
     ctx.LockService = {
@@ -623,7 +667,7 @@ async function main() {
   });
 
 
-  await test('Stage 7 settings replacement writes before clearing stale tail rows', () => {
+  await test('Stage 8 settings replacement writes before clearing stale tail rows', () => {
     const ctx = backendContext();
     ['Config.gs', 'Contracts.gs', 'Utils.gs'].forEach(file => load(ctx, file));
     const operations = [];
@@ -650,11 +694,13 @@ async function main() {
     assert(clearIndex === -1 || clearIndex > 0, 'stale settings were cleared before replacement write');
   });
 
-  await test('Stage 7 password reset restores previous credential when email delivery fails', () => {
+  await test('Stage 8 password reset restores previous credential when email delivery fails', () => {
     const ctx = backendContext();
     ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs'].forEach(file => load(ctx, file));
     const updates = [];
     ctx.withScriptLock_ = (_name, fn) => fn();
+    ctx.consumeRateLimit_ = () => null;
+    ctx.safeAuditEvent_ = () => true;
     ctx.userRepositoryFindByEmail_ = () => ({
       rowNumber: 2,
       row: ['', 'Tester', '', '', '', 'user@example.com', 'old-password-hash', 'مدير'],
@@ -675,11 +721,116 @@ async function main() {
     assert(updates[1] === 'old-password-hash', 'previous credential was not restored after mail failure');
   });
 
+
+  await test('Stage 8 browser session keeps raw token out of localStorage', () => {
+    const ctx = frontendContext();
+    loadFrontendCore(ctx);
+    const MW = ctx.window.MedWaste;
+    MW.Session.setUser({
+      fullName: 'Admin',
+      email: 'admin@example.com',
+      role: MW.Contracts.Roles.ADMIN,
+      sessionToken: 'raw-browser-token'
+    });
+    const persisted = ctx.localStorage.getItem(MW.Storage.KEYS.currentUser) || '';
+    assert(!persisted.includes('raw-browser-token'), 'raw token persisted in localStorage');
+    assert(ctx.sessionStorage.getItem(MW.Storage.KEYS.sessionToken) === 'raw-browser-token', 'token missing from sessionStorage');
+    assert(MW.Session.getToken() === 'raw-browser-token', 'Session.getToken failed');
+  });
+
+  await test('Stage 8 backend stores only token hash for new sessions', () => {
+    const ctx = backendContext();
+    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Security.gs'].forEach(file => load(ctx, file));
+    load(ctx, 'SessionRepository.gs');
+    let appended = null;
+    ctx.sessionRepositorySheet_ = () => ({
+      appendRow(row) { appended = row; },
+      getLastRow() { return 1; }
+    });
+    ctx.sessionRepositoryTrimForEmail_ = () => 0;
+    const raw = ctx.sessionRepositoryCreate_('user@example.com', new Date(Date.now() + 10000));
+    assert(Boolean(raw), 'raw session token not returned');
+    assert(appended && String(appended[0]).startsWith('tok$'), 'stored session value is not hashed');
+    assert(appended[0] !== raw && !String(appended[0]).includes(raw), 'raw token stored at rest');
+  });
+
+  await test('Stage 8 login rate limiter blocks at configured threshold', () => {
+    const ctx = backendContext();
+    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Security.gs'].forEach(file => load(ctx, file));
+    const cache = new Map();
+    ctx.cacheGetJson_ = key => cache.get(key) || null;
+    ctx.cachePutJson_ = (key, value) => cache.set(key, JSON.parse(JSON.stringify(value)));
+    ctx.cacheRemove_ = key => cache.delete(key);
+    load(ctx, 'RateLimit.gs');
+
+    for (let i = 0; i < ctx.LOGIN_MAX_FAILURES; i++) {
+      const pre = ctx.rateLimitCheck_('login', 'user@example.com', ctx.LOGIN_MAX_FAILURES, ctx.LOGIN_RATE_WINDOW_SECONDS);
+      assert(pre === null, `rate limited too early at attempt ${i + 1}`);
+      ctx.rateLimitRecord_('login', 'user@example.com', ctx.LOGIN_RATE_WINDOW_SECONDS);
+    }
+    const blocked = ctx.rateLimitCheck_('login', 'user@example.com', ctx.LOGIN_MAX_FAILURES, ctx.LOGIN_RATE_WINDOW_SECONDS);
+    assert(blocked && blocked.code === 'RATE_LIMITED', 'rate limiter did not block threshold');
+    assert(Number(blocked.details?.retryAfterMs) > 0, 'rate limiter missing retry hint');
+  });
+
+  await test('Stage 8 role update invalidates target user sessions', () => {
+    const ctx = backendContext();
+    ['Config.gs', 'Contracts.gs', 'Utils.gs'].forEach(file => load(ctx, file));
+    let updatedRole = '';
+    let invalidatedEmail = '';
+    ctx.requireActionAuth_ = () => ({ok: true, user: {email:'admin@example.com', fullName:'Admin', role:'مدير'}});
+    ctx.validateRoleUpdateInput_ = () => null;
+    ctx.withScriptLock_ = (_name, fn) => fn();
+    ctx.userRepositoryFindByEmail_ = () => ({rowNumber:2, user:{role:'مشرف'}});
+    ctx.userRepositoryCountAdmins_ = () => 2;
+    ctx.userRepositoryUpdateRole_ = (_row, role) => { updatedRole = role; };
+    ctx.invalidateSessionsForEmail_ = email => { invalidatedEmail = email; };
+    ctx.safeAuditEvent_ = () => true;
+    load(ctx, 'Users.gs');
+    const result = ctx.updateRole_({targetEmail:'user@example.com', newRole:'مدخل بيانات'});
+    assert(result.result === 'success' && result.changed === true, 'role update did not succeed');
+    assert(updatedRole === 'مدخل بيانات', 'role was not updated');
+    assert(invalidatedEmail === 'user@example.com', 'target sessions were not invalidated');
+  });
+
+  await test('Stage 8 unknown password-reset account returns generic success', () => {
+    const ctx = backendContext();
+    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Security.gs', 'Validators.gs'].forEach(file => load(ctx, file));
+    ctx.consumeRateLimit_ = () => null;
+    ctx.withScriptLock_ = (_name, fn) => fn();
+    ctx.userRepositoryFindByEmail_ = () => null;
+    ctx.safeAuditEvent_ = () => true;
+    load(ctx, 'Auth.gs');
+    const result = ctx.forgotPassword_({email:'unknown@example.com'});
+    assert(result.result === 'success', 'unknown reset account leaks error');
+    assert(/إذا كان البريد مسجلاً/.test(result.message || ''), 'password reset response is not generic');
+  });
+
+  await test('Stage 8 audit trail redacts sensitive metadata before persistence', () => {
+    const ctx = backendContext();
+    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs'].forEach(file => load(ctx, file));
+    let captured = null;
+    ctx.auditRepositoryAppend_ = entry => { captured = entry; return true; };
+    load(ctx, 'Audit.gs');
+    ctx.safeAuditEvent_({
+      params: {requestId:'req-audit', action:'login'},
+      action: 'login',
+      event: 'TEST',
+      result: 'SUCCESS',
+      metadata: {password:'secret-password', sessionToken:'secret-token', okay:2}
+    });
+    assert(captured, 'audit event was not persisted');
+    assert(!captured.metadataJson.includes('secret-password'), 'password leaked to audit sheet');
+    assert(!captured.metadataJson.includes('secret-token'), 'token leaked to audit sheet');
+    assert(captured.metadataJson.includes('[REDACTED]'), 'redaction marker missing');
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
-      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs',
-      'RecordMapper.gs', 'UserMapper.gs', 'Records.gs', 'Idempotency.gs', 'SelfTests.gs'
+      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Security.gs', 'Validators.gs',
+      'AccessControl.gs', 'Audit.gs', 'RecordMapper.gs', 'UserMapper.gs',
+      'Records.gs', 'Idempotency.gs', 'Router.gs', 'SelfTests.gs'
     ].forEach(file => load(ctx, file));
     const result = ctx.runSelfTests();
     assert(result.result === 'success', `backend self-tests failed: ${JSON.stringify(result.tests)}`);
@@ -691,13 +842,13 @@ async function main() {
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '7.0', contractVersion: '1.2', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.0', contractVersion: '1.3', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '7.0', 'health version mismatch');
-    assert(data.appVersion === '7.0', 'response appVersion missing');
-    assert(data.contractVersion === '1.2', 'health contract version mismatch');
+    assert(data.version === '8.0', 'health version mismatch');
+    assert(data.appVersion === '8.0', 'response appVersion missing');
+    assert(data.contractVersion === '1.3', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });

@@ -1,7 +1,7 @@
 /**
  * MedWaste DK - Google Apps Script entry points.
  * Business logic lives in dedicated backend modules.
- * Stage 6.1: resilient bootstrap + backend installation verification.
+ * Stage 8: secure bootstrap + backend installation verification.
  */
 
 function safeJsonResponse_(obj) {
@@ -112,20 +112,28 @@ function verifyBackendInstallation() {
   var checks = [
     ['Config.gs', 'APP_VERSION', typeof APP_VERSION !== 'undefined'],
     ['Contracts.gs', 'API_ACTIONS', typeof API_ACTIONS !== 'undefined'],
+    ['Contracts.gs', 'ACTION_ROLES', typeof ACTION_ROLES !== 'undefined'],
     ['Utils.gs', 'json_', typeof json_ === 'function'],
     ['Utils.gs', 'clean_', typeof clean_ === 'function'],
     ['Utils.gs', 'success_', typeof success_ === 'function'],
     ['Utils.gs', 'failure_', typeof failure_ === 'function'],
     ['Logging.gs', 'createRequestContext_', typeof createRequestContext_ === 'function'],
     ['Logging.gs', 'attachResponseMeta_', typeof attachResponseMeta_ === 'function'],
+    ['Logging.gs', 'sanitizeLogMeta_', typeof sanitizeLogMeta_ === 'function'],
     ['Concurrency.gs', 'withScriptLock_', typeof withScriptLock_ === 'function'],
     ['Cache.gs', 'cacheGetJson_', typeof cacheGetJson_ === 'function'],
+    ['RateLimit.gs', 'rateLimitCheck_', typeof rateLimitCheck_ === 'function'],
+    ['AccessControl.gs', 'authorizeAction_', typeof authorizeAction_ === 'function'],
+    ['Audit.gs', 'safeAuditEvent_', typeof safeAuditEvent_ === 'function'],
+    ['AuditRepository.gs', 'auditRepositoryAppend_', typeof auditRepositoryAppend_ === 'function'],
     ['Idempotency.gs', 'executeIdempotentMutation_', typeof executeIdempotentMutation_ === 'function'],
     ['IdempotencyRepository.gs', 'idempotencyRepositoryFind_', typeof idempotencyRepositoryFind_ === 'function'],
     ['Router.gs', 'routeGet_', typeof routeGet_ === 'function'],
     ['Router.gs', 'routePost_', typeof routePost_ === 'function'],
     ['Sheets.gs', 'getSpreadsheet_', typeof getSpreadsheet_ === 'function'],
+    ['Sheets.gs', 'ensureAuditSheet_', typeof ensureAuditSheet_ === 'function'],
     ['Security.gs', 'hashPassword_', typeof hashPassword_ === 'function'],
+    ['Security.gs', 'sessionTokenHash_', typeof sessionTokenHash_ === 'function'],
     ['Validators.gs', 'validateRecordInput_', typeof validateRecordInput_ === 'function'],
     ['RecordMapper.gs', 'recordFromRow_', typeof recordFromRow_ === 'function'],
     ['RecordRepository.gs', 'recordRepositoryFindAll_', typeof recordRepositoryFindAll_ === 'function'],
@@ -133,12 +141,14 @@ function verifyBackendInstallation() {
     ['UserRepository.gs', 'userRepositoryList_', typeof userRepositoryList_ === 'function'],
     ['SettingsRepository.gs', 'settingsRepositoryRead_', typeof settingsRepositoryRead_ === 'function'],
     ['SessionRepository.gs', 'sessionRepositoryFindByToken_', typeof sessionRepositoryFindByToken_ === 'function'],
-    ['Sheets.gs', 'ensureIdempotencySheet_', typeof ensureIdempotencySheet_ === 'function'],
+    ['SessionRepository.gs', 'sessionRepositoryMigrateLegacyTokens_', typeof sessionRepositoryMigrateLegacyTokens_ === 'function'],
+    ['IdempotencyRepository.gs', 'idempotencyRepositoryCleanupExpired_', typeof idempotencyRepositoryCleanupExpired_ === 'function'],
     ['Sessions.gs', 'requireAuth_', typeof requireAuth_ === 'function'],
     ['Auth.gs', 'login_', typeof login_ === 'function'],
     ['Records.gs', 'getRecords_', typeof getRecords_ === 'function'],
     ['Settings.gs', 'getSettings_', typeof getSettings_ === 'function'],
     ['Users.gs', 'getUsers_', typeof getUsers_ === 'function'],
+    ['Audit.gs', 'getAuditLog_', typeof getAuditLog_ === 'function'],
     ['SelfTests.gs', 'runSelfTests', typeof runSelfTests === 'function']
   ];
 
@@ -166,8 +176,11 @@ function setupSystem() {
   ensureUsersSheet_(ss);
   ensureSettingsSheet_(ss);
   ensureSessionsSheet_(ss);
+  try { sessionRepositoryMigrateLegacyTokens_(); } catch (err) {}
   ensureIdempotencySheet_(ss);
+  ensureAuditSheet_(ss);
   ensureDataSheet_(ss);
   try { idempotencyRepositoryCleanupExpired_(new Date()); } catch (err) {}
+  try { auditRepositoryCleanupOld_(new Date()); } catch (err) {}
   return 'System ready - v' + APP_VERSION;
 }

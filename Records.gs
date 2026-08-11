@@ -1,6 +1,6 @@
 /**
  * Medical-waste record and trip use cases.
- * Persistence is delegated to RecordRepository.gs.
+ * Stage 8 enforces centralized role permissions and writes non-sensitive audit events.
  */
 
 function normalizeRecordsPage_(value) {
@@ -15,10 +15,9 @@ function normalizeRecordsPageSize_(value) {
 }
 
 function getRecords_(p) {
-  var auth = requireAuth_(p);
+  var auth = requireActionAuth_(p, API_ACTIONS.GET_RECORDS);
   if (!auth.ok) return auth.error;
 
-  // Backward compatibility: callers without page/pageSize still receive the full list.
   var hasPaging = clean_(p.page) !== '' || clean_(p.pageSize) !== '';
   if (!hasPaging) return success_({data: recordRepositoryFindAll_()});
 
@@ -29,7 +28,8 @@ function getRecords_(p) {
 }
 
 function addRecords_(p, isBatch) {
-  var auth = requireAuth_(p);
+  var action = isBatch ? API_ACTIONS.ADD_RECORDS_BATCH : API_ACTIONS.ADD_RECORD;
+  var auth = requireActionAuth_(p, action);
   if (!auth.ok) return auth.error;
 
   var incoming;
@@ -55,6 +55,7 @@ function addRecords_(p, isBatch) {
     var rows = [];
     var accepted = [];
     var skipped = 0;
+    var tripIds = {};
 
     for (var i = 0; i < incoming.length; i++) {
       var record = incoming[i] || {};
@@ -75,15 +76,31 @@ function addRecords_(p, isBatch) {
       rows.push(recordToRow_(canonical, auth.user.fullName || auth.user.email));
       accepted.push({recordId: recordId, tripId: tripId});
       existingIds[recordId] = true;
+      tripIds[tripId] = true;
     }
 
     recordRepositoryInsertRows_(rows);
+
+    var uniqueTripIds = Object.keys(tripIds);
+    safeAuditEvent_({
+      params: p, auth: auth, action: action,
+      event: 'RECORDS_ADDED', result: 'SUCCESS',
+      targetType: uniqueTripIds.length === 1 ? 'trip' : 'records',
+      targetId: uniqueTripIds.length === 1 ? uniqueTripIds[0] : 'batch',
+      metadata: {
+        inserted: rows.length,
+        skipped: skipped,
+        tripCount: uniqueTripIds.length,
+        tripIds: uniqueTripIds.slice(0, 20)
+      }
+    });
+
     return success_({inserted: rows.length, skipped: skipped, records: accepted});
   });
 }
 
 function deleteTrip_(p) {
-  var auth = requireAuth_(p, [ROLES.ADMIN]);
+  var auth = requireActionAuth_(p, API_ACTIONS.DELETE_TRIP);
   if (!auth.ok) return auth.error;
 
   var tripId = clean_(p.tripId);
@@ -91,7 +108,12 @@ function deleteTrip_(p) {
 
   return withScriptLock_('delete_trip', function () {
     var deleted = recordRepositoryDeleteByTripId_(tripId);
-    // Treat repeated deletes as success so a lost response can be retried safely.
+    safeAuditEvent_({
+      params: p, auth: auth, action: API_ACTIONS.DELETE_TRIP,
+      event: 'TRIP_DELETED', result: 'SUCCESS',
+      targetType: 'trip', targetId: tripId,
+      metadata: {deletedRecords: deleted, alreadyDeleted: deleted === 0}
+    });
     return success_({deleted: deleted, alreadyDeleted: deleted === 0});
   });
 }

@@ -1,9 +1,9 @@
 /**
  * Public API contract constants shared by backend modules.
- * Keep the matching frontend file assets/js/core/contracts.js in sync.
+ * Keep assets/js/core/contracts.js in sync.
  */
 
-var API_CONTRACT_VERSION = '1.2';
+var API_CONTRACT_VERSION = '1.3';
 
 var API_ACTIONS = {
   REGISTER: 'register',
@@ -19,6 +19,7 @@ var API_ACTIONS = {
   GET_SETTINGS: 'get_settings',
   GET_USERS: 'get_users',
   GET_ME: 'get_me',
+  GET_AUDIT_LOG: 'get_audit_log',
   HEALTH: 'health'
 };
 
@@ -30,6 +31,24 @@ var ROLES = {
 
 var ALLOWED_ROLES = [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN];
 
+var ACTION_ROLES = {
+  register: [],
+  login: [],
+  forgot_password: [],
+  health: [],
+  logout: [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN],
+  get_me: [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN],
+  get_settings: [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN],
+  add_record: [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN],
+  add_records_batch: [ROLES.DATA_ENTRY, ROLES.SUPERVISOR, ROLES.ADMIN],
+  get_records: [ROLES.SUPERVISOR, ROLES.ADMIN],
+  delete_trip: [ROLES.ADMIN],
+  save_settings: [ROLES.ADMIN],
+  get_users: [ROLES.ADMIN],
+  update_role: [ROLES.ADMIN],
+  get_audit_log: [ROLES.ADMIN]
+};
+
 var ERROR_CODES = {
   VALIDATION: 'VALIDATION',
   INVALID_JSON: 'INVALID_JSON',
@@ -39,6 +58,8 @@ var ERROR_CODES = {
   MAIL_ERROR: 'MAIL_ERROR',
   AUTH_REQUIRED: 'AUTH_REQUIRED',
   FORBIDDEN: 'FORBIDDEN',
+  RATE_LIMITED: 'RATE_LIMITED',
+  METHOD_NOT_ALLOWED: 'METHOD_NOT_ALLOWED',
   NOT_FOUND: 'NOT_FOUND',
   LAST_ADMIN: 'LAST_ADMIN',
   TOO_MANY_RECORDS: 'TOO_MANY_RECORDS',
@@ -51,10 +72,12 @@ var ERROR_CODES = {
 };
 
 var API_LIMITS = {
-  PASSWORD_MIN_LENGTH: 6,
+  PASSWORD_MIN_LENGTH: 8,
   RECORDS_PER_BATCH: 250,
   RECORDS_PAGE_SIZE_DEFAULT: 500,
   RECORDS_PAGE_SIZE_MAX: 1000,
+  AUDIT_PAGE_SIZE_DEFAULT: 100,
+  AUDIT_PAGE_SIZE_MAX: 500,
   NAME_MAX_LENGTH: 160,
   EMAIL_MAX_LENGTH: 254,
   PHONE_MAX_LENGTH: 40,

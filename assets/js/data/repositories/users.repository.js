@@ -4,7 +4,7 @@
   const { Api, Contracts, UserMapper } = MW;
 
   async function list() {
-    const response = await Api.get(Contracts.Actions.GET_USERS);
+    const response = await Api.read(Contracts.Actions.GET_USERS);
     return (response.data || []).map(UserMapper.fromApi);
   }
 

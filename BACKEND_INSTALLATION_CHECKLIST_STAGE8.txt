@@ -1,0 +1,32 @@
+MedWaste DK — Stage 8 Backend Installation Checklist
+=====================================================
+
+[ ] 1. Take a backup copy of the Google Spreadsheet.
+[ ] 2. Open Extensions → Apps Script.
+[ ] 3. Ensure ALL 29 .gs files listed in BACKEND_FILE_MANIFEST_STAGE8.txt exist in the SAME project.
+[ ] 4. Save all Apps Script files.
+[ ] 5. Run verifyBackendInstallation().
+       Expected: result=success and missing=[]
+[ ] 6. Run setupSystem().
+       It will:
+       - verify/prepare system sheets;
+       - create and hide _سجل_التدقيق;
+       - migrate legacy plaintext session tokens to tok$ SHA-256 lookup hashes;
+       - keep the existing data/user/settings schemas unchanged;
+       - clean expired idempotency/audit infrastructure where applicable.
+[ ] 7. Run runSelfTests().
+       Expected Stage 8 result: passed=21, failed=0.
+[ ] 8. Deploy → Manage deployments → Edit → New version → Deploy.
+[ ] 9. Deploy/upload the Stage 8 frontend as part of the same release window.
+       Stage 8 protected reads use POST; the Stage 7 frontend is not API-compatible with this security change.
+[ ] 10. Open:
+        YOUR_EXEC_URL?action=health
+        Expected: version=8.0, contractVersion=1.3, environment=production.
+[ ] 11. Sign in again if needed and run the smoke test.
+[ ] 12. As an admin, open admin_audit.html and confirm security events appear.
+
+IMPORTANT
+---------
+Only the health endpoint is intentionally exposed through GET.
+Protected operations such as get_records/get_settings/get_users/get_me/get_audit_log now travel by POST
+so the session token is never placed in the URL.

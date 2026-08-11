@@ -49,7 +49,7 @@
 
     // Safety cap prevents a malformed server response from causing an infinite loop.
     for (let guard = 0; guard < 500; guard += 1) {
-      const response = await Api.get(Contracts.Actions.GET_RECORDS, { page, pageSize });
+      const response = await Api.read(Contracts.Actions.GET_RECORDS, { page, pageSize });
       all.push(...(response.data || []).map(RecordMapper.fromApi));
 
       const pagination = response.pagination;

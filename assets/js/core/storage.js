@@ -5,6 +5,7 @@
 
   const KEYS = Object.freeze({
     currentUser: 'currentUser',
+    sessionToken: 'medwaste_session_token',
     records: 'dakahlia_waste_records',
     healthAdmins: 'sys_health_admins',
     cars: 'sys_cars',
@@ -20,40 +21,39 @@
     return value == null ? fallback : value;
   }
 
-  function setText(key, value) {
-    localStorage.setItem(key, String(value));
-  }
+  function setText(key, value) { localStorage.setItem(key, String(value)); }
 
   function getJson(key, fallback) {
     const raw = localStorage.getItem(key);
     if (raw == null || raw === '') return fallback;
-    try {
-      return JSON.parse(raw);
-    } catch (error) {
+    try { return JSON.parse(raw); }
+    catch (error) {
       Logger.warn('storage_json_parse_failed', { key, error });
       return fallback;
     }
   }
 
-  function setJson(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+  function setJson(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+  function remove(key) { localStorage.removeItem(key); }
+  function has(key) { return localStorage.getItem(key) != null; }
+
+  function getSessionText(key, fallback = '') {
+    try {
+      const value = sessionStorage.getItem(key);
+      return value == null ? fallback : value;
+    } catch (_) { return fallback; }
   }
 
-  function remove(key) {
-    localStorage.removeItem(key);
+  function setSessionText(key, value) {
+    try { sessionStorage.setItem(key, String(value)); } catch (_) {}
   }
 
-  function has(key) {
-    return localStorage.getItem(key) != null;
+  function removeSession(key) {
+    try { sessionStorage.removeItem(key); } catch (_) {}
   }
 
   MW.Storage = Object.freeze({
-    KEYS,
-    getText,
-    setText,
-    getJson,
-    setJson,
-    remove,
-    has
+    KEYS, getText, setText, getJson, setJson, remove, has,
+    getSessionText, setSessionText, removeSession
   });
 })(window.MedWaste);

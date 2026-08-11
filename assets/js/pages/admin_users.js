@@ -3,7 +3,7 @@
 
   const { Session, UsersRepository, Contracts, Validators } = MW;
   const currentUser = Session.getUser();
-  if (!currentUser || currentUser.role !== Contracts.Roles.ADMIN) {
+  if (!currentUser || !Session.getToken() || !Contracts.canRole(currentUser.role, Contracts.Actions.GET_USERS)) {
     alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');
     window.location.href = 'index.html';
     return;

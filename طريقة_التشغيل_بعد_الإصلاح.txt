@@ -1,19 +1,2 @@
-هذه النسخة هي Stage 7 (Production Hardening).
-
-استخدم الملف التالي كمرجع التشغيل الأساسي:
-طريقة_التشغيل_STAGE7.txt
-
-واستخدم أيضًا:
-BACKEND_INSTALLATION_CHECKLIST_STAGE7.txt
-
-الترتيب المختصر:
-1) Backup للـGoogle Sheet.
-2) تحديث كل ملفات .gs داخل نفس Apps Script Project.
-3) إضافة الملفات الجديدة: Cache.gs, Concurrency.gs, Idempotency.gs, IdempotencyRepository.gs.
-4) Save.
-5) تشغيل verifyBackendInstallation().
-6) تشغيل setupSystem().
-7) تشغيل runSelfTests() والتأكد من passed=13 و failed=0.
-8) Deploy > Manage deployments > Edit > New version > Deploy.
-9) اختبار ?action=health والتأكد من version=7.0 و contractVersion=1.2.
-10) رفع Frontend Stage 7 أيضًا.
+استخدم تعليمات Stage 8 الحالية في الملف:
+طريقة_التشغيل_STAGE8.txt

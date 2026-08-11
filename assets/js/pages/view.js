@@ -1,7 +1,9 @@
 (function (MW) {
   'use strict';
 
-  const { Records, Trips, UI, Utils } = MW;
+  const { Records, Trips, UI, Utils, Session, Contracts } = MW;
+  const currentUser = Session.getUser();
+  const canDeleteTrips = Boolean(currentUser && Contracts.canRole(currentUser.role, Contracts.Actions.DELETE_TRIP));
   const Logger = MW.Logger || { error() {} };
   let allRecords = [];
   let visibleTrips = [];
@@ -37,7 +39,7 @@
         <td class="p-3 text-center text-xs font-bold text-slate-500">${Utils.escapeHtml(trip.createdBy)}</td>
         <td class="p-3 text-center flex justify-center gap-2">
           <button type="button" data-trip-action="details" data-index="${index}" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-emerald-200">👁️ التفاصيل</button>
-          <button type="button" data-trip-action="delete" data-trip-id="${Utils.escapeHtml(trip.tripId)}" class="delete-trip-btn bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-rose-200">🗑️ حذف</button>
+          ${canDeleteTrips ? `<button type="button" data-trip-action="delete" data-trip-id="${Utils.escapeHtml(trip.tripId)}" class="delete-trip-btn bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold px-3 py-1.5 rounded-xl text-xs transition border border-rose-200">🗑️ حذف</button>` : ''}
         </td>`;
       tableBody.appendChild(row);
     });

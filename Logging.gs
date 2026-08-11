@@ -46,6 +46,24 @@ function errorSummary_(err) {
   return clean_(err.message || err.toString()).substring(0, 500);
 }
 
+function sanitizeLogMeta_(value, depth) {
+  depth = depth || 0;
+  if (depth > 4) return '[TRUNCATED]';
+  if (value == null) return value;
+  if (Array.isArray(value)) return value.slice(0, 25).map(function (item) { return sanitizeLogMeta_(item, depth + 1); });
+  if (typeof value === 'object') {
+    var out = {};
+    for (var key in value) {
+      if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+      if (/(password|token|secret|authorization|credential|recordsData|settingsData)/i.test(key)) out[key] = '[REDACTED]';
+      else out[key] = sanitizeLogMeta_(value[key], depth + 1);
+    }
+    return out;
+  }
+  if (typeof value === 'string' && value.length > 500) return value.substring(0, 500) + '…';
+  return value;
+}
+
 function logEvent_(level, eventName, meta) {
   level = clean_(level).toUpperCase() || 'INFO';
   if (!shouldLog_(level)) return;
@@ -56,7 +74,7 @@ function logEvent_(level, eventName, meta) {
     event: clean_(eventName) || 'event',
     appVersion: APP_VERSION,
     environment: APP_ENVIRONMENT,
-    meta: meta || {}
+    meta: sanitizeLogMeta_(meta || {}, 0)
   };
 
   var line = JSON.stringify(entry);

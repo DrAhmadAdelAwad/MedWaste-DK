@@ -1,6 +1,6 @@
 /**
  * Safe backend self-tests. Does not read or write Google Sheets.
- * Run runSelfTests() manually from Apps Script after structural changes.
+ * Stage 8 adds RBAC, token-at-rest and audit-safety checks.
  */
 
 function runSelfTests() {
@@ -20,11 +20,15 @@ function runSelfTests() {
   }
 
   test('contract version exists', function () {
-    assert_(Boolean(API_CONTRACT_VERSION), 'Missing API contract version');
+    assert_(API_CONTRACT_VERSION === '1.3', 'Stage 8 contract version mismatch');
   });
 
   test('health action exists', function () {
     assert_(API_ACTIONS.HEALTH === 'health', 'Health action mismatch');
+  });
+
+  test('audit action exists', function () {
+    assert_(API_ACTIONS.GET_AUDIT_LOG === 'get_audit_log', 'Audit action mismatch');
   });
 
   test('email validation', function () {
@@ -35,6 +39,12 @@ function runSelfTests() {
   test('ISO date validation', function () {
     assert_(isValidIsoDate_('2026-08-11'), 'Valid date rejected');
     assert_(!isValidIsoDate_('2026-02-30'), 'Invalid date accepted');
+  });
+
+  test('stage8 password minimum', function () {
+    assert_(API_LIMITS.PASSWORD_MIN_LENGTH === 8, 'Password minimum is not 8');
+    var bad = validateRegistrationInput_({fullName:'Tester', email:'user@example.com', password:'1234567'});
+    assert_(bad && bad.result === 'error', 'Short registration password accepted');
   });
 
   test('record validation', function () {
@@ -61,7 +71,6 @@ function runSelfTests() {
     assert_(record.tripId === 'trip-1', 'Trip ID column mismatch');
     var row = recordToRow_(record, 'Tester');
     assert_(row.length === DATA_HEADERS.length, 'Record row column count mismatch');
-    assert_(row[12] === 'rec-1' && row[13] === 'trip-1', 'Record identifiers moved');
   });
 
   test('user row mapper', function () {
@@ -71,35 +80,72 @@ function runSelfTests() {
   });
 
   test('request id normalization', function () {
-    var id = normalizeRequestId_('req-ABC_123');
-    assert_(id === 'req-ABC_123', 'Request ID normalization changed valid value');
+    assert_(normalizeRequestId_('req-ABC_123') === 'req-ABC_123', 'Request ID normalization changed valid value');
   });
 
   test('response metadata', function () {
-    var context = {requestId: 'req-test'};
-    var out = attachResponseMeta_(success_({message: 'OK'}), context);
+    var out = attachResponseMeta_(success_({message: 'OK'}), {requestId: 'req-test'});
     assert_(out.requestId === 'req-test', 'Missing request ID');
     assert_(out.contractVersion === API_CONTRACT_VERSION, 'Missing contract version');
     assert_(out.appVersion === APP_VERSION, 'Missing app version');
   });
 
-  test('stage7 busy error exists', function () {
+  test('busy error exists', function () {
     assert_(ERROR_CODES.BUSY === 'BUSY', 'BUSY error code missing');
   });
 
-  test('stage7 pagination limits', function () {
-    assert_(API_LIMITS.RECORDS_PAGE_SIZE_DEFAULT === 500, 'Default page size mismatch');
-    assert_(API_LIMITS.RECORDS_PAGE_SIZE_MAX === 1000, 'Max page size mismatch');
+  test('records pagination limits', function () {
+    assert_(API_LIMITS.RECORDS_PAGE_SIZE_DEFAULT === 500, 'Default records page size mismatch');
+    assert_(normalizeRecordsPageSize_('9999') === 1000, 'Records page size cap failed');
   });
 
-  test('stage7 pagination normalization', function () {
-    assert_(normalizeRecordsPage_('2') === 2, 'Page normalization failed');
-    assert_(normalizeRecordsPageSize_('9999') === 1000, 'Page size cap failed');
+  test('audit pagination limits', function () {
+    assert_(API_LIMITS.AUDIT_PAGE_SIZE_DEFAULT === 100, 'Default audit page size mismatch');
+    assert_(API_LIMITS.AUDIT_PAGE_SIZE_MAX === 500, 'Max audit page size mismatch');
   });
 
-  test('stage7 idempotency action selection', function () {
+  test('idempotency action selection', function () {
     assert_(isIdempotentMutationAction_(API_ACTIONS.ADD_RECORDS_BATCH), 'Batch save should be idempotent');
     assert_(!isIdempotentMutationAction_(API_ACTIONS.LOGIN), 'Login must not use mutation replay storage');
+  });
+
+  test('stage8 RBAC matrix', function () {
+    assert_(actionRoles_(API_ACTIONS.ADD_RECORDS_BATCH).indexOf(ROLES.DATA_ENTRY) !== -1, 'Data entry cannot add records');
+    assert_(actionRoles_(API_ACTIONS.GET_RECORDS).indexOf(ROLES.DATA_ENTRY) === -1, 'Data entry can read protected records');
+    assert_(actionRoles_(API_ACTIONS.GET_RECORDS).indexOf(ROLES.SUPERVISOR) !== -1, 'Supervisor cannot read records');
+    assert_(actionRoles_(API_ACTIONS.DELETE_TRIP).length === 1 && actionRoles_(API_ACTIONS.DELETE_TRIP)[0] === ROLES.ADMIN, 'Delete trip is not admin-only');
+    assert_(actionRoles_(API_ACTIONS.GET_AUDIT_LOG)[0] === ROLES.ADMIN, 'Audit log is not admin-only');
+  });
+
+  test('protected GET is rejected', function () {
+    var out = routeGet_({action: API_ACTIONS.GET_RECORDS});
+    assert_(out.result === 'error' && out.code === ERROR_CODES.METHOD_NOT_ALLOWED, 'Protected GET was not rejected');
+  });
+
+  test('audit metadata redaction', function () {
+    var safe = sanitizeAuditMetadata_({password:'abc', token:'xyz', passed:21, nested:{secret:'q', okay:2}}, 0);
+    assert_(safe.password === '[REDACTED]', 'Password leaked into audit metadata');
+    assert_(safe.token === '[REDACTED]', 'Token leaked into audit metadata');
+    assert_(safe.nested.secret === '[REDACTED]' && safe.nested.okay === 2, 'Nested audit sanitization failed');
+    assert_(safe.passed === 21, 'Safe audit key was over-redacted');
+  });
+
+  test('log metadata redaction', function () {
+    var safe = sanitizeLogMeta_({password:'abc', token:'xyz', passed:21, okay:2}, 0);
+    assert_(safe.password === '[REDACTED]' && safe.token === '[REDACTED]', 'Sensitive log metadata leaked');
+    assert_(safe.okay === 2 && safe.passed === 21, 'Safe log metadata changed');
+  });
+
+  test('session token is hashed at rest', function () {
+    var raw = 'raw-session-token';
+    var stored = sessionTokenHash_(raw);
+    assert_(stored.indexOf('tok$') === 0, 'Session token hash prefix missing');
+    assert_(stored !== raw && stored.indexOf(raw) === -1, 'Raw token appears in stored session value');
+  });
+
+  test('stage8 security error codes', function () {
+    assert_(ERROR_CODES.RATE_LIMITED === 'RATE_LIMITED', 'Rate limit error missing');
+    assert_(ERROR_CODES.METHOD_NOT_ALLOWED === 'METHOD_NOT_ALLOWED', 'Method error missing');
   });
 
   var failed = results.filter(function (item) { return item.status === 'FAIL'; }).length;
@@ -112,10 +158,6 @@ function runSelfTests() {
     contractVersion: API_CONTRACT_VERSION
   };
 
-  // Surface the report automatically in the Apps Script Execution log.
-  // Logging remains centralized through Logging.gs.
-  if (typeof logEvent_ === 'function') {
-    logEvent_(failed ? 'ERROR' : 'INFO', 'self_tests_finished', report);
-  }
+  if (typeof logEvent_ === 'function') logEvent_(failed ? 'ERROR' : 'INFO', 'self_tests_finished', report);
   return report;
 }

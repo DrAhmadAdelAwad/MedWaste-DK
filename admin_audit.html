@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>سجل التدقيق الأمني - منظومة النفايات</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/base.css">
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <div class="bg-gradient-to-r from-indigo-900 to-slate-800 text-white p-6 rounded-2xl flex flex-wrap gap-4 justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-bold">🛡️ سجل التدقيق الأمني</h1>
+        <p class="text-indigo-100 mt-1 text-sm">تتبع العمليات الإدارية ومحاولات الوصول والنتائج بدون تخزين كلمات المرور أو رموز الجلسات.</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="admin_users.html" class="bg-white/15 hover:bg-white/25 px-4 py-2 rounded-xl text-sm font-bold">المستخدمون</a>
+        <a href="index.html" class="bg-white/15 hover:bg-white/25 px-4 py-2 rounded-xl text-sm font-bold">العودة للمنظومة</a>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="p-4 border-b flex flex-wrap gap-3 justify-between items-center">
+        <div>
+          <div id="auditCount" class="font-bold text-slate-800">جاري التحميل...</div>
+          <div class="text-xs text-slate-500 mt-1">الأحدث أولاً — الصفحة تعرض حتى 100 حدث.</div>
+        </div>
+        <button id="refreshAuditButton" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold">تحديث</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[1050px] text-right">
+          <thead class="bg-slate-50 border-b text-xs text-slate-600">
+            <tr>
+              <th class="p-3">التوقيت</th>
+              <th class="p-3">الحدث</th>
+              <th class="p-3">النتيجة</th>
+              <th class="p-3">المنفذ</th>
+              <th class="p-3">العملية</th>
+              <th class="p-3">الهدف</th>
+              <th class="p-3">Request ID</th>
+              <th class="p-3">تفاصيل آمنة</th>
+            </tr>
+          </thead>
+          <tbody id="auditTable" class="divide-y divide-slate-100">
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">جاري تحميل سجل التدقيق...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 border-t flex justify-between items-center">
+        <button id="prevAuditPage" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-sm font-bold disabled:opacity-40">السابق</button>
+        <span id="auditPageInfo" class="text-sm font-semibold text-slate-600">—</span>
+        <button id="nextAuditPage" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-sm font-bold disabled:opacity-40">التالي</button>
+      </div>
+    </div>
+  </div>
+
+<script src="assets/js/core/namespace.js"></script>
+<script src="assets/js/config/app-config.js"></script>
+<script src="assets/js/core/contracts.js"></script>
+<script src="assets/js/core/logger.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/session.js"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/errors.js"></script>
+<script src="assets/js/core/validators.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/domain/record.entity.js"></script>
+<script src="assets/js/domain/trip.entity.js"></script>
+<script src="assets/js/domain/user.entity.js"></script>
+<script src="assets/js/domain/settings.entity.js"></script>
+<script src="assets/js/data/mappers/record.mapper.js"></script>
+<script src="assets/js/data/mappers/user.mapper.js"></script>
+<script src="assets/js/data/mappers/settings.mapper.js"></script>
+<script src="assets/js/data/repositories/records.repository.js"></script>
+<script src="assets/js/data/repositories/auth.repository.js"></script>
+<script src="assets/js/data/repositories/settings.repository.js"></script>
+<script src="assets/js/data/repositories/users.repository.js"></script>
+<script src="assets/js/data/repositories/audit.repository.js"></script>
+<script src="assets/js/core/diagnostics.js"></script>
+<script src="assets/js/core/ui.js"></script>
+<script src="assets/js/features/auth/auth.service.js"></script>
+<script src="assets/js/pages/admin_audit.js"></script>
+</body>
+</html>

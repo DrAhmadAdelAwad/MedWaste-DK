@@ -4,15 +4,24 @@
   const { Session, Auth, Contracts } = MW;
   const currentUser = Session.getUser();
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-  const restrictedPages = ['view.html', 'reports.html', 'facility_report.html'];
 
-  if (!currentUser) {
+  const pageAction = Object.freeze({
+    'view.html': Contracts.Actions.GET_RECORDS,
+    'reports.html': Contracts.Actions.GET_RECORDS,
+    'facility_report.html': Contracts.Actions.GET_RECORDS,
+    'admin_users.html': Contracts.Actions.GET_USERS,
+    'admin_audit.html': Contracts.Actions.GET_AUDIT_LOG
+  });
+
+  if (!currentUser || !Session.getToken()) {
+    Session.clearUser();
     window.location.href = 'login.html';
     return;
   }
 
-  if (currentUser.role === Contracts.Roles.DATA_ENTRY && restrictedPages.includes(currentPage)) {
-    alert('عفواً، صلاحيتك (مدخل بيانات) لا تسمح بالوصول لهذه الصفحة.');
+  const requiredAction = pageAction[currentPage];
+  if (requiredAction && !Contracts.canRole(currentUser.role, requiredAction)) {
+    alert('عفواً، صلاحيتك الحالية لا تسمح بالوصول لهذه الصفحة.');
     window.location.href = 'index.html';
     return;
   }
@@ -22,19 +31,28 @@
 
     const navContainer = document.querySelector('.flex.flex-wrap.gap-2.justify-center');
     if (navContainer) {
-      if (currentUser.role === Contracts.Roles.DATA_ENTRY) {
-        navContainer.querySelectorAll('a').forEach(link => {
-          if (!link.href.includes('index.html')) link.style.display = 'none';
-        });
-      }
+      navContainer.querySelectorAll('a').forEach(link => {
+        const page = (link.getAttribute('href') || '').split('/').pop();
+        const action = pageAction[page];
+        if (action && !Contracts.canRole(currentUser.role, action)) link.style.display = 'none';
+      });
 
-      if (currentUser.role === Contracts.Roles.ADMIN && !navContainer.querySelector('[data-admin-nav]')) {
+      if (Contracts.canRole(currentUser.role, Contracts.Actions.GET_USERS) && !navContainer.querySelector('[data-admin-users-nav]')) {
         const adminButton = document.createElement('a');
         adminButton.href = 'admin_users.html';
-        adminButton.dataset.adminNav = 'true';
+        adminButton.dataset.adminUsersNav = 'true';
         adminButton.className = 'bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
-        adminButton.innerText = '⚙️ لوحة المستخدمين';
+        adminButton.innerText = '⚙️ المستخدمون';
         navContainer.appendChild(adminButton);
+      }
+
+      if (Contracts.canRole(currentUser.role, Contracts.Actions.GET_AUDIT_LOG) && !navContainer.querySelector('[data-admin-audit-nav]')) {
+        const auditButton = document.createElement('a');
+        auditButton.href = 'admin_audit.html';
+        auditButton.dataset.adminAuditNav = 'true';
+        auditButton.className = 'bg-indigo-500 hover:bg-indigo-600 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow transition';
+        auditButton.innerText = '🛡️ سجل التدقيق';
+        navContainer.appendChild(auditButton);
       }
 
       const userBadge = document.createElement('span');
@@ -50,7 +68,7 @@
       navContainer.appendChild(logoutButton);
     }
 
-    if (currentUser.role !== Contracts.Roles.ADMIN) {
+    if (!Contracts.canRole(currentUser.role, Contracts.Actions.SAVE_SETTINGS)) {
       document.getElementById('clearLocalStorageButton')?.classList.add('hidden');
       document.getElementById('managerControlsButton')?.classList.add('hidden');
     }

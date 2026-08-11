@@ -1,74 +1,10 @@
-(function (MW) {
-  'use strict';
-
-  const { Session, UsersRepository, Contracts, Validators } = MW;
-  const currentUser = Session.getUser();
-  if (!currentUser || !Session.getToken() || !Contracts.canRole(currentUser.role, Contracts.Actions.GET_USERS)) {
-    alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');
-    window.location.href = 'index.html';
-    return;
-  }
-
-  async function loadUsers() {
-    const table = document.getElementById('usersTable');
-    try {
-      const users = await UsersRepository.list();
-      table.innerHTML = '';
-
-      users.forEach(user => {
-        const row = document.createElement('tr');
-        row.className = 'hover:bg-slate-50';
-        row.innerHTML = `
-          <td class="p-4">
-            <div class="font-bold text-slate-800 user-name"></div>
-            <div class="text-xs text-slate-500 user-job"></div>
-          </td>
-          <td class="p-4 text-sm text-slate-600">
-            <div class="user-email"></div>
-            <div class="text-xs user-mobile"></div>
-          </td>
-          <td class="p-4 font-bold text-emerald-600 user-role"></td>
-          <td class="p-4 flex gap-2">
-            <select class="border rounded-lg px-2 py-1 text-sm bg-white role-select">
-              ${Contracts.RoleList.map(role => `<option value="${role}">${role}</option>`).join('')}
-            </select>
-            <button type="button" class="update-role-btn bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">تحديث</button>
-          </td>`;
-        row.querySelector('.user-name').textContent = user.fullName || '';
-        row.querySelector('.user-job').textContent = `${user.jobTitle || ''} - ${user.workplace || ''}`;
-        row.querySelector('.user-email').textContent = user.email || '';
-        row.querySelector('.user-mobile').textContent = user.mobile || '';
-        row.querySelector('.user-role').textContent = user.role || '';
-        row.querySelector('.role-select').value = user.role || Contracts.Roles.DATA_ENTRY;
-        row.querySelector('.update-role-btn').dataset.email = user.email || '';
-        table.appendChild(row);
-      });
-    } catch (error) {
-      table.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-rose-500">حدث خطأ في تحميل البيانات</td></tr>';
-    }
-  }
-
-  async function updateRole(email, button) {
-    const row = button.closest('tr');
-    const newRole = row.querySelector('.role-select').value;
-    try {
-      Validators.assertRole(newRole);
-      button.innerText = '...';
-      button.disabled = true;
-      await UsersRepository.updateRole(email, newRole);
-      alert('تم تحديث الصلاحية بنجاح');
-      await loadUsers();
-    } catch (error) {
-      alert(error.message || 'فشل الاتصال');
-      button.innerText = 'تحديث';
-      button.disabled = false;
-    }
-  }
-
-  document.getElementById('usersTable')?.addEventListener('click', event => {
-    const button = event.target.closest('.update-role-btn');
-    if (button) updateRole(button.dataset.email, button);
-  });
-
-  document.addEventListener('DOMContentLoaded', loadUsers);
+(function(MW){
+  'use strict';const {Session,UsersRepository,EntitiesRepository,Contracts,Validators}=MW;const currentUser=Session.getUser();if(!currentUser||!Session.getToken()||!Contracts.canRole(currentUser.role,Contracts.Actions.GET_USERS)){alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');window.location.href='index.html';return;}let entities={facilities:[],treatmentUnits:[]};
+  function entityOptions(role,selected){const list=role===Contracts.Roles.FACILITY_ENTRY?entities.facilities:role===Contracts.Roles.TREATMENT_ENTRY?entities.treatmentUnits:[];if(!list.length)return '<option value="">لا تتطلب جهة</option>';return '<option value="">-- اختر الجهة --</option>'+list.map(x=>`<option value="${x.entityId}" ${x.entityId===selected?'selected':''}>${x.name}${x.healthAdmin?` — ${x.healthAdmin}`:''} [${x.entityId}]</option>`).join('');}
+  function updateAssignmentForRow(row){const role=row.querySelector('.role-select').value,sel=row.querySelector('.entity-select'),current=sel.dataset.current||'';sel.innerHTML=entityOptions(role,current);sel.disabled=!(role===Contracts.Roles.FACILITY_ENTRY||role===Contracts.Roles.TREATMENT_ENTRY);}
+  async function loadUsers(){const table=document.getElementById('usersTable');try{const [users,e]=await Promise.all([UsersRepository.list(),EntitiesRepository.list()]);entities=e;table.innerHTML='';users.forEach(user=>{const row=document.createElement('tr');row.className='hover:bg-slate-50';row.innerHTML=`<td class="p-4"><div class="font-bold text-slate-800 user-name"></div><div class="text-xs text-slate-500 user-job"></div></td><td class="p-4 text-sm text-slate-600"><div class="user-email"></div><div class="text-xs user-mobile"></div></td><td class="p-4 font-bold text-emerald-600 user-role"></td><td class="p-4"><div class="text-xs font-bold entity-name"></div><div class="text-[10px] text-slate-400 entity-id"></div></td><td class="p-4 space-y-2"><select class="border rounded-lg px-2 py-1 text-sm bg-white role-select w-full">${Contracts.RoleList.map(role=>`<option value="${role}">${role}</option>`).join('')}</select><select class="border rounded-lg px-2 py-1 text-xs bg-white entity-select w-full"></select><button type="button" class="update-role-btn bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg w-full">تحديث</button></td>`;row.querySelector('.user-name').textContent=user.fullName||'';row.querySelector('.user-job').textContent=`${user.jobTitle||''} - ${user.workplace||''}`;row.querySelector('.user-email').textContent=user.email||'';row.querySelector('.user-mobile').textContent=user.mobile||'';row.querySelector('.user-role').textContent=user.role||'';row.querySelector('.entity-name').textContent=user.entityName||'غير مرتبط';row.querySelector('.entity-id').textContent=user.entityId||'';row.querySelector('.role-select').value=Contracts.RoleList.includes(user.role)?user.role:Contracts.Roles.FACILITY_ENTRY;row.querySelector('.entity-select').dataset.current=user.entityId||'';row.querySelector('.update-role-btn').dataset.email=user.email||'';updateAssignmentForRow(row);table.appendChild(row);});}catch(error){table.innerHTML='<tr><td colspan="5" class="p-8 text-center text-rose-500">حدث خطأ في تحميل البيانات</td></tr>';}}
+  async function updateRole(email,button){const row=button.closest('tr'),role=row.querySelector('.role-select').value,entityId=row.querySelector('.entity-select').value;try{Validators.assertAccessAssignment(role,entityId);button.innerText='...';button.disabled=true;await UsersRepository.updateRole(email,role,entityId);alert('تم تحديث الصلاحية وربط الجهة بنجاح. سيحتاج المستخدم لتسجيل الدخول مجدداً.');await loadUsers();}catch(error){alert(error.message||'فشل الاتصال');button.innerText='تحديث';button.disabled=false;}}
+  document.getElementById('usersTable')?.addEventListener('change',e=>{if(e.target.matches('.role-select')){const row=e.target.closest('tr');row.querySelector('.entity-select').dataset.current='';updateAssignmentForRow(row);}});
+  document.getElementById('usersTable')?.addEventListener('click',e=>{const b=e.target.closest('.update-role-btn');if(b)updateRole(b.dataset.email,b);});
+  document.addEventListener('DOMContentLoaded',loadUsers);
 })(window.MedWaste);

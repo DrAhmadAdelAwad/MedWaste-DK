@@ -8,7 +8,8 @@
   const pageAction = Object.freeze({
     'view.html': Contracts.Actions.GET_RECORDS,
     'reports.html': Contracts.Actions.GET_RECORDS,
-    'facility_report.html': Contracts.Actions.GET_RECORDS,
+    'facility_report.html': Contracts.Actions.AUTHORIZE_CLAIM,
+    'reconciliation.html': Contracts.Actions.GET_RECONCILIATION,
     'admin_users.html': Contracts.Actions.GET_USERS,
     'admin_audit.html': Contracts.Actions.GET_AUDIT_LOG
   });

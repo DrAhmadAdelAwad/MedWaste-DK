@@ -1,17 +1,1 @@
-(function (MW) {
-  'use strict';
-
-  const Repo = MW.RecordsRepository;
-
-  MW.Records = Object.freeze({
-    getLocal: Repo.getLocal,
-    saveLocal: Repo.saveLocal,
-    mergeCloudWithLocal: Repo.mergeCloudWithLocal,
-    fetchMerged: Repo.fetchMerged,
-    markSynced: Repo.markSynced,
-    append: Repo.appendLocal,
-    removeByIds: Repo.removeByIds,
-    removeTripLocal: Repo.removeTripLocal,
-    clearLocal: Repo.clearLocal
-  });
-})(window.MedWaste);
+(function(MW){'use strict';const R=MW.RecordsRepository;MW.Records=Object.freeze({getLocal:R.getLocal,saveLocal:R.saveLocal,mergeCloudWithLocal:R.mergeCloudWithLocal,fetchMerged:R.fetchMerged,markSynced:R.markSynced,append:R.appendLocal,removeByIds:R.removeByIds,removeTripLocal:R.removeTripLocal,clearLocal:R.clearLocal});})(window.MedWaste);

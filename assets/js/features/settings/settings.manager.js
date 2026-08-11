@@ -34,7 +34,7 @@
 
   function switchTab(tabKey) {
     activeTab = tabKey;
-    ['cars', 'drivers', 'admins', 'gov', 'priv', 'comp', 'backup'].forEach(key => {
+    ['cars', 'drivers', 'admins', 'gov', 'priv', 'comp', 'treatment', 'backup'].forEach(key => {
       const button = document.getElementById(`tab-${key}`);
       if (!button) return;
       button.className = key === tabKey
@@ -164,7 +164,8 @@
     if (activeTab === 'drivers') return data().drivers;
     if (activeTab === 'gov') return data().govFacilities;
     if (activeTab === 'priv') return data().privateFacilities;
-    return data().privateCompanies;
+    if (activeTab === 'comp') return data().privateCompanies;
+    return data().treatmentUnits;
   }
 
   function renderGenericList() {
@@ -177,7 +178,8 @@
       drivers: 'إدارة قائمة السائقين',
       gov: 'إدارة قائمة المنشآت الحكومية',
       priv: 'إدارة قائمة المنشآت الخاصة',
-      comp: 'إدارة قائمة الشركات الخاصة'
+      comp: 'إدارة قائمة الشركات الخاصة',
+      treatment: 'إدارة قائمة وحدات المعالجة'
     };
     title.innerText = titles[activeTab] || 'إدارة العناصر';
     list.innerHTML = '';
@@ -226,7 +228,8 @@
 
   function exportBackup() {
     const backupData = Object.assign({
-      dakahlia_waste_records: Records.getLocal(),
+      dakahlia_facility_entry_records: Records.getLocal(MW.Contracts.EntrySources.FACILITY),
+      dakahlia_treatment_entry_records: Records.getLocal(MW.Contracts.EntrySources.TREATMENT),
       export_date: new Date().toISOString()
     }, SettingsService.exportBackupSettings());
 
@@ -247,7 +250,9 @@
       try {
         const backup = JSON.parse(loadEvent.target.result);
         if (!confirm('هل أنت متأكد من استرجاع هذه النسخة الاحتياطية؟ سيتم تحديث كافة السجلات والقوائم المعتمدة.')) return;
-        if (backup.dakahlia_waste_records) Records.saveLocal(backup.dakahlia_waste_records);
+        if (backup.dakahlia_facility_entry_records) Records.saveLocal(MW.Contracts.EntrySources.FACILITY, backup.dakahlia_facility_entry_records);
+        if (backup.dakahlia_treatment_entry_records) Records.saveLocal(MW.Contracts.EntrySources.TREATMENT, backup.dakahlia_treatment_entry_records);
+        else if (backup.dakahlia_waste_records) Records.saveLocal(MW.Contracts.EntrySources.TREATMENT, backup.dakahlia_waste_records);
         SettingsService.replaceLocalSettings(backup);
         alert('تم استرجاع النسخة الاحتياطية بنجاح!');
         location.reload();
@@ -262,7 +267,7 @@
     document.getElementById('managerControlsButton')?.addEventListener('click', toggleModal);
     document.getElementById('toggleManagerModalControl')?.addEventListener('click', toggleModal);
     document.getElementById('toggleManagerModal2Control')?.addEventListener('click', toggleModal);
-    ['cars', 'drivers', 'admins', 'gov', 'priv', 'comp', 'backup'].forEach(key => {
+    ['cars', 'drivers', 'admins', 'gov', 'priv', 'comp', 'treatment', 'backup'].forEach(key => {
       document.getElementById(`tab-${key}`)?.addEventListener('click', () => switchTab(key));
     });
     document.getElementById('addHealthAdminControl')?.addEventListener('click', addHealthAdmin);

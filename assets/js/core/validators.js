@@ -1,105 +1,15 @@
 (function (MW) {
-  'use strict';
-
-  const { Contracts, Errors } = MW;
-  const { Limits, RoleList } = Contracts;
-
-  function clean(value) {
-    return String(value == null ? '' : value).trim();
-  }
-
-  function isEmail(value) {
-    const email = clean(value).toLowerCase();
-    return Boolean(email) && email.length <= Limits.EMAIL_MAX_LENGTH && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  function assertLogin(email, password) {
-    if (!clean(email) || !clean(password)) throw Errors.validation('أدخل الإيميل وكلمة المرور.');
-    if (!isEmail(email)) throw Errors.validation('صيغة الإيميل غير صحيحة.');
-  }
-
-  function assertRegistration(payload) {
-    const fullName = clean(payload?.fullName);
-    const email = clean(payload?.email);
-    const password = clean(payload?.password);
-    if (!fullName || !email || !password) throw Errors.validation('الاسم والإيميل وكلمة المرور مطلوبة.');
-    if (!isEmail(email)) throw Errors.validation('صيغة الإيميل غير صحيحة.');
-    if (password.length < Limits.PASSWORD_MIN_LENGTH) {
-      throw Errors.validation(`كلمة المرور يجب ألا تقل عن ${Limits.PASSWORD_MIN_LENGTH} أحرف.`);
-    }
-    if (fullName.length > Limits.NAME_MAX_LENGTH) throw Errors.validation('الاسم أطول من الحد المسموح.');
-  }
-
-  function assertEmail(email) {
-    if (!clean(email)) throw Errors.validation('أدخل الإيميل.');
-    if (!isEmail(email)) throw Errors.validation('صيغة الإيميل غير صحيحة.');
-  }
-
-  function assertRoute(route) {
-    if (!clean(route?.reportDate) || !clean(route?.treatmentUnit) || !clean(route?.driverName) || !clean(route?.carNumber)) {
-      throw Errors.validation('برجاء استكمال بيانات خط السير الأساسية (التاريخ، وحدة المعالجة، السائق والسيارة).');
-    }
-  }
-
-  function assertFacility(facility, requireSelection = true) {
-    const mainType = clean(facility?.mainType ?? facility?.facilityMainType);
-    const subFacilityName = clean(facility?.subFacilityName ?? facility?.facilityName);
-    const visitType = clean(facility?.visitType);
-    const wasteWeight = Number(facility?.wasteWeight);
-    const weightUnit = clean(facility?.weightUnit);
-
-    if (requireSelection && (!mainType || !subFacilityName)) {
-      throw Errors.validation('برجاء اختيار نوع المنشأة واسمها أولاً.');
-    }
-    if (!visitType) throw Errors.validation('برجاء تحديد طبيعة الزيارة.');
-    if (visitType === 'نقل نفايات' && (!Number.isFinite(wasteWeight) || wasteWeight <= 0)) {
-      throw Errors.validation('برجاء إدخال الوزن المسجل للمنشأة.');
-    }
-    if (visitType === 'نقل نفايات' && !weightUnit) {
-      throw Errors.validation('برجاء اختيار وحدة الوزن.');
-    }
-  }
-
-  function assertBatch(batch) {
-    if (!Array.isArray(batch) || batch.length === 0) throw Errors.validation('برجاء إدخال منشأة واحدة على الأقل قبل الحفظ النهائي.');
-    if (batch.length > Limits.RECORDS_PER_BATCH) {
-      throw Errors.validation(`الحد الأقصى ${Limits.RECORDS_PER_BATCH} منشأة في الرحلة الواحدة.`);
-    }
-    batch.forEach(item => assertFacility(item, true));
-  }
-
-  function assertRole(role) {
-    if (!RoleList.includes(clean(role))) throw Errors.validation('الصلاحية غير صالحة.');
-  }
-
-  function assertSettings(data) {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) throw Errors.validation('بيانات الإعدادات غير صحيحة.');
-    if (data.healthAdmins != null && (typeof data.healthAdmins !== 'object' || Array.isArray(data.healthAdmins))) {
-      throw Errors.validation('قائمة الإدارات الصحية غير صحيحة.');
-    }
-    if (data.healthAdmins) {
-      Object.values(data.healthAdmins).forEach(units => {
-        if (!Array.isArray(units)) throw Errors.validation('وحدات إحدى الإدارات الصحية ليست في صيغة قائمة صحيحة.');
-      });
-    }
-    ['cars', 'drivers', 'govFacilities', 'privateFacilities', 'privateCompanies'].forEach(key => {
-      if (data[key] != null && !Array.isArray(data[key])) throw Errors.validation(`صيغة إعدادات ${key} غير صحيحة.`);
-    });
-    if (JSON.stringify(data).length > Limits.SETTINGS_JSON_MAX_LENGTH) {
-      throw Errors.validation('حجم بيانات الإعدادات أكبر من الحد المسموح.');
-    }
-  }
-
-  MW.Validators = Object.freeze({
-    clean,
-    isEmail,
-    assertLogin,
-    assertRegistration,
-    assertEmail,
-    assertRoute,
-    assertFacility,
-    assertBatch,
-    assertRole,
-    assertSettings
-  });
+  'use strict'; const {Contracts,Errors}=MW; const {Limits,RoleList}=Contracts;
+  const clean=v=>String(v==null?'':v).trim();
+  function isEmail(v){const e=clean(v).toLowerCase();return !!e&&e.length<=Limits.EMAIL_MAX_LENGTH&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);}
+  function assertLogin(email,password){if(!clean(email)||!clean(password))throw Errors.validation('أدخل الإيميل وكلمة المرور.');if(!isEmail(email))throw Errors.validation('صيغة الإيميل غير صحيحة.');}
+  function assertRegistration(p){const n=clean(p?.fullName),e=clean(p?.email),pw=clean(p?.password);if(!n||!e||!pw)throw Errors.validation('الاسم والإيميل وكلمة المرور مطلوبة.');if(!isEmail(e))throw Errors.validation('صيغة الإيميل غير صحيحة.');if(pw.length<Limits.PASSWORD_MIN_LENGTH)throw Errors.validation(`كلمة المرور يجب ألا تقل عن ${Limits.PASSWORD_MIN_LENGTH} أحرف.`);if(!clean(p?.facilityId))throw Errors.validation('اختر المنشأة التابعة لحسابك.');if(n.length>Limits.NAME_MAX_LENGTH)throw Errors.validation('الاسم أطول من الحد المسموح.');}
+  function assertEmail(email){if(!clean(email))throw Errors.validation('أدخل الإيميل.');if(!isEmail(email))throw Errors.validation('صيغة الإيميل غير صحيحة.');}
+  function assertRoute(route){if(!clean(route?.reportDate)||!clean(route?.driverName)||!clean(route?.carNumber))throw Errors.validation('برجاء استكمال بيانات الرحلة الأساسية (التاريخ، السائق والسيارة).');}
+  function assertFacility(f,required=true){const main=clean(f?.mainType??f?.facilityMainType),name=clean(f?.subFacilityName??f?.facilityName),visit=clean(f?.visitType),w=Number(f?.wasteWeight),unit=clean(f?.weightUnit);if(required&&(!main||!name))throw Errors.validation('برجاء تحديد المنشأة.');if(!visit)throw Errors.validation('برجاء تحديد طبيعة الزيارة.');if(visit==='نقل نفايات'&&(!Number.isFinite(w)||w<=0))throw Errors.validation('برجاء إدخال الوزن المسجل للمنشأة.');if(visit==='نقل نفايات'&&!unit)throw Errors.validation('برجاء اختيار وحدة الوزن.');}
+  function assertBatch(batch){if(!Array.isArray(batch)||!batch.length)throw Errors.validation('برجاء إدخال منشأة واحدة على الأقل قبل الحفظ النهائي.');if(batch.length>Limits.RECORDS_PER_BATCH)throw Errors.validation(`الحد الأقصى ${Limits.RECORDS_PER_BATCH} منشأة في الرحلة الواحدة.`);batch.forEach(x=>assertFacility(x,true));}
+  function assertRole(role){if(!RoleList.includes(clean(role)))throw Errors.validation('الصلاحية غير صالحة.');}
+  function assertAccessAssignment(role,entityId){assertRole(role);if((role===Contracts.Roles.FACILITY_ENTRY||role===Contracts.Roles.TREATMENT_ENTRY)&&!clean(entityId))throw Errors.validation('يجب تحديد الجهة المرتبطة بهذه الصلاحية.');}
+  function assertSettings(d){if(!d||typeof d!=='object'||Array.isArray(d))throw Errors.validation('بيانات الإعدادات غير صحيحة.');if(d.healthAdmins!=null&&(typeof d.healthAdmins!=='object'||Array.isArray(d.healthAdmins)))throw Errors.validation('قائمة الإدارات الصحية غير صحيحة.');if(d.healthAdmins)Object.values(d.healthAdmins).forEach(u=>{if(!Array.isArray(u))throw Errors.validation('وحدات إحدى الإدارات الصحية ليست في صيغة قائمة صحيحة.');});['cars','drivers','govFacilities','privateFacilities','privateCompanies','treatmentUnits'].forEach(k=>{if(d[k]!=null&&!Array.isArray(d[k]))throw Errors.validation(`صيغة إعدادات ${k} غير صحيحة.`);});if(JSON.stringify(d).length>Limits.SETTINGS_JSON_MAX_LENGTH)throw Errors.validation('حجم بيانات الإعدادات أكبر من الحد المسموح.');}
+  MW.Validators=Object.freeze({clean,isEmail,assertLogin,assertRegistration,assertEmail,assertRoute,assertFacility,assertBatch,assertRole,assertAccessAssignment,assertSettings});
 })(window.MedWaste);

@@ -9,7 +9,8 @@
     drivers: Storage.KEYS.drivers,
     govFacilities: Storage.KEYS.govFacilities,
     privateFacilities: Storage.KEYS.privateFacilities,
-    privateCompanies: Storage.KEYS.privateCompanies
+    privateCompanies: Storage.KEYS.privateCompanies,
+    treatmentUnits: Storage.KEYS.treatmentUnits
   });
 
   function hasLocal(key) { return Storage.has(STORAGE_BY_DOMAIN_KEY[key]); }
@@ -63,7 +64,8 @@
       sys_drivers: normalized.drivers,
       sys_gov_facilities: normalized.govFacilities,
       sys_priv_facilities: normalized.privateFacilities,
-      sys_priv_companies: normalized.privateCompanies
+      sys_priv_companies: normalized.privateCompanies,
+      sys_treatment_units: normalized.treatmentUnits
     };
   }
 
@@ -74,7 +76,8 @@
       drivers: bundle.sys_drivers,
       govFacilities: bundle.sys_gov_facilities,
       privateFacilities: bundle.sys_priv_facilities,
-      privateCompanies: bundle.sys_priv_companies
+      privateCompanies: bundle.sys_priv_companies,
+      treatmentUnits: bundle.sys_treatment_units
     }, defaults);
   }
 

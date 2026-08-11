@@ -1,7 +1,10 @@
 (function (MW) {
   'use strict';
 
-  const { Records, UI } = MW;
+  const { Records, UI, Session, Contracts } = MW;
+  const currentUser = Session.getUser();
+  let currentSource = currentUser?.role === Contracts.Roles.FACILITY_ENTRY ? Contracts.EntrySources.FACILITY : Contracts.EntrySources.TREATMENT;
+  const canSwitchSource = currentUser?.role === Contracts.Roles.SUPERVISOR || currentUser?.role === Contracts.Roles.ADMIN;
   let unitsChartInstance = null;
   let typesChartInstance = null;
   let currentFilteredRecords = [];
@@ -13,16 +16,43 @@
     firstDay.setDate(1);
     document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
 
+    bindSourceToggle();
     generateReports();
     UI.setSyncBadge('جاري تحديث السجلات... ⏳', 'loading');
     try {
-      await Records.fetchMerged();
+      await Records.fetchMerged(currentSource);
       generateReports();
       UI.setSyncBadge('✅ تم تحديث السجلات', 'success', 2000);
     } catch (error) {
       UI.setSyncBadge('❌ تعذر الاتصال (عرض محلي)', 'error', 3000);
     }
   });
+
+        function bindSourceToggle() {
+            const container = document.getElementById('reportsSourceToggle');
+            if (!container) return;
+            const paint = () => container.querySelectorAll('[data-source]').forEach(btn => {
+                const active = btn.dataset.source === currentSource;
+                btn.className = `source-toggle px-4 py-2 rounded-lg transition ${active ? 'bg-white text-emerald-800 shadow' : 'text-slate-600'}`;
+                if (!canSwitchSource && !active) btn.classList.add('hidden');
+            });
+            paint();
+            container.addEventListener('click', async event => {
+                const btn = event.target.closest('[data-source]');
+                if (!btn || !canSwitchSource || btn.dataset.source === currentSource) return;
+                currentSource = btn.dataset.source;
+                paint();
+                document.getElementById('primaryChartTitle').textContent = currentSource === Contracts.EntrySources.FACILITY
+                    ? 'الأوزان المسجلة حسب المنشأة (كجم)'
+                    : 'الأوزان الموردة لكل وحدة معالجة (كجم)';
+                UI.setSyncBadge('جاري تحميل مصدر الإدخال... ⏳', 'loading');
+                try { await Records.fetchMerged(currentSource); generateReports(); UI.setSyncBadge('✅ تم تحديث البيانات', 'success', 1500); }
+                catch (_) { generateReports(); UI.setSyncBadge('❌ عرض البيانات المحلية', 'error', 2200); }
+            });
+            document.getElementById('primaryChartTitle').textContent = currentSource === Contracts.EntrySources.FACILITY
+                ? 'الأوزان المسجلة حسب المنشأة (كجم)'
+                : 'الأوزان الموردة لكل وحدة معالجة (كجم)';
+        }
 
         function resetFilters() {
             document.getElementById('startDate').value = '';
@@ -31,7 +61,7 @@
         }
 
         function generateReports() {
-            const allRecords = Records.getLocal();
+            const allRecords = Records.getLocal(currentSource);
             
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
@@ -72,9 +102,10 @@
                 let w = r.visitType === 'زيارة فقط بدون نقل' ? 0 : parseFloat(r.wasteWeight || 0);
                 w = isNaN(w) ? 0 : w;
                 
-                if (r.treatmentUnit) {
-                    unitsData[r.treatmentUnit] = (unitsData[r.treatmentUnit] || 0) + w;
-                }
+                const primaryLabel = currentSource === Contracts.EntrySources.FACILITY
+                    ? (r.subFacilityName || r.facilityName || 'منشأة غير محددة')
+                    : (r.treatmentUnit || 'وحدة غير محددة');
+                unitsData[primaryLabel] = (unitsData[primaryLabel] || 0) + w;
 
                 if (r.facilityMainType) {
                     typesData[r.facilityMainType] = (typesData[r.facilityMainType] || 0) + 1;

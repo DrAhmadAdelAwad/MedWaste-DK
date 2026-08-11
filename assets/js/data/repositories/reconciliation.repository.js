@@ -1,0 +1,1 @@
+(function(MW){'use strict';const {Api,Contracts}=MW;async function compare(filters){const r=await Api.read(Contracts.Actions.GET_RECONCILIATION,filters);return r.data||{summary:{},days:[]};}async function authorizeClaim(scope){return Api.post(Contracts.Actions.AUTHORIZE_CLAIM,scope);}MW.ReconciliationRepository=Object.freeze({compare,authorizeClaim});})(window.MedWaste);

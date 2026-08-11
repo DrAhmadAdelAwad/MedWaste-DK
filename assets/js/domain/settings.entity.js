@@ -2,7 +2,7 @@
   'use strict';
 
   const { Utils } = MW;
-  const KEYS = Object.freeze(['healthAdmins', 'cars', 'drivers', 'govFacilities', 'privateFacilities', 'privateCompanies']);
+  const KEYS = Object.freeze(['healthAdmins', 'cars', 'drivers', 'govFacilities', 'privateFacilities', 'privateCompanies', 'treatmentUnits']);
 
   function normalize(input = {}, defaults = {}) {
     const result = {};

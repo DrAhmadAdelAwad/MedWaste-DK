@@ -90,8 +90,10 @@
     }, defaults);
   }
 
+  function prime(data) { saveLocal(data); Storage.setText(Storage.KEYS.settingsFetchedAt, Date.now()); return data; }
+
   MW.SettingsRepository = Object.freeze({
-    loadLocal, ensureDefaults, saveLocal, isCloudFresh, fetchCloud, saveCloud, retryPending,
+    loadLocal, ensureDefaults, saveLocal, prime, isCloudFresh, fetchCloud, saveCloud, retryPending,
     exportLegacyBundle, fromLegacyBundle
   });
 })(window.MedWaste);

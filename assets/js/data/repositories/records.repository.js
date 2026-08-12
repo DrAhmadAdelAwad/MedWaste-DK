@@ -1,6 +1,6 @@
 (function (MW) {
   'use strict'; const {Storage,Api,Contracts,RecordEntity,RecordMapper}=MW;
-  const CLOUD_TTL_MS=120000;
+  const CLOUD_TTL_MS=300000;
   function storageKey(source){return source===Contracts.EntrySources.FACILITY?Storage.KEYS.facilityRecords:Storage.KEYS.treatmentRecords;}
   function fetchedAtKey(source){return source===Contracts.EntrySources.FACILITY?Storage.KEYS.facilityRecordsFetchedAt:Storage.KEYS.treatmentRecordsFetchedAt;}
   function migrateLegacyTreatment(){if(!Storage.has(Storage.KEYS.treatmentRecords)&&Storage.has(Storage.KEYS.records)){const old=Storage.getJson(Storage.KEYS.records,[]);Storage.setJson(Storage.KEYS.treatmentRecords,Array.isArray(old)?old.map(r=>Object.assign({},r,{entrySource:r.entrySource||Contracts.EntrySources.TREATMENT})):[]);}}
@@ -10,14 +10,20 @@
   function isCloudFresh(source,maxAgeMs=CLOUD_TTL_MS){const at=Number(Storage.getText(fetchedAtKey(source),'0'))||0;return at>0&&(Date.now()-at)<Math.max(0,Number(maxAgeMs)||0);}
   function markCloudFresh(source){Storage.setText(fetchedAtKey(source),Date.now());}
   function invalidateCloudCache(source){Storage.remove(fetchedAtKey(source));}
+
+  async function fetchCloudPage(source=Contracts.EntrySources.TREATMENT,options={}){const page=Math.max(1,Number(options.page)||1),pageSize=Math.min(Contracts.Limits.RECORDS_PAGE_SIZE_MAX||1000,Math.max(1,Number(options.pageSize)||500));const response=await Api.read(Contracts.Actions.GET_RECORDS,{page,pageSize,order:options.order||'desc',source});return{records:(response.data||[]).map(RecordMapper.fromApi),pagination:response.pagination||{page,pageSize,hasMore:false}};}
+  async function fetchScoped(source=Contracts.EntrySources.TREATMENT,filters={}){const payload={source,startDate:filters.startDate||'',endDate:filters.endDate||''};if(filters.facilityId)payload.facilityId=filters.facilityId;if(filters.healthAdmin)payload.healthAdmin=filters.healthAdmin;if(filters.facilityMainType)payload.facilityMainType=filters.facilityMainType;const response=await Api.read(Contracts.Actions.GET_RECORDS,payload);return(response.data||[]).map(RecordMapper.fromApi);}
+  function mergePageIntoLocal(source,pageRecords){const local=getLocal(source),byId=new Map();local.forEach((r,i)=>{if(r.recordId)byId.set(String(r.recordId),i);});(pageRecords||[]).forEach(r=>{const id=r.recordId?String(r.recordId):'';if(id&&byId.has(id)){local[byId.get(id)]=r;}else{local.push(r);if(id)byId.set(id,local.length-1);}});saveLocal(source,local);return local;}
   async function fetchCloudPaged(source=Contracts.EntrySources.TREATMENT){const all=[],pageSize=Contracts.Limits.RECORDS_PAGE_SIZE_MAX||1000;let page=1;for(let guard=0;guard<500;guard+=1){const response=await Api.read(Contracts.Actions.GET_RECORDS,{page,pageSize,source});all.push(...(response.data||[]).map(RecordMapper.fromApi));const p=response.pagination;if(!p||!p.hasMore)break;page=Number(p.page||page)+1;}markCloudFresh(source);return all;}
   async function fetchMerged(source=Contracts.EntrySources.TREATMENT,options={}){const local=getLocal(source).slice();const maxAgeMs=options.force?0:(Number(options.maxAgeMs)||CLOUD_TTL_MS);if(!options.force&&local.length&&isCloudFresh(source,maxAgeMs))return local;const cloud=await fetchCloudPaged(source),merged=mergeCloudWithLocal(cloud,local);saveLocal(source,merged);return merged;}
   async function saveBatch(source,records){const payload=(records||[]).map(RecordMapper.toApi);const out=await Api.post(Contracts.Actions.ADD_RECORDS_BATCH,{source,recordsData:JSON.stringify(payload)});invalidateCloudCache(source);return out;}
+  async function updateRecordCloud(source,recordId,recordData){const out=await Api.post(Contracts.Actions.UPDATE_RECORD,{source,recordId:String(recordId||'').trim(),recordData:JSON.stringify(RecordMapper.toApi(recordData||{}))});invalidateCloudCache(source);return out;}
+  async function deleteRecordCloud(source,recordId){const out=await Api.post(Contracts.Actions.DELETE_RECORD,{source,recordId:String(recordId||'').trim()});invalidateCloudCache(source);return out;}
   async function deleteTripCloud(source,tripId){const out=await Api.post(Contracts.Actions.DELETE_TRIP,{source,tripId:String(tripId||'').trim()});invalidateCloudCache(source);return out;}
   function markSynced(source,ids){const wanted=new Set((ids||[]).map(String)),records=getLocal(source);records.forEach(r=>{if(r.recordId&&wanted.has(String(r.recordId)))delete r._syncStatus;});saveLocal(source,records);invalidateCloudCache(source);return records;}
   function appendLocal(source,records){const current=getLocal(source);current.push(...records);saveLocal(source,current);invalidateCloudCache(source);return current;}
   function removeByIds(source,ids){const wanted=new Set((ids||[]).map(String));const records=getLocal(source).filter(r=>!r.recordId||!wanted.has(String(r.recordId)));saveLocal(source,records);invalidateCloudCache(source);return records;}
   function removeTripLocal(source,tripId){const id=String(tripId||'').trim(),records=getLocal(source).filter(r=>String(r.tripId||'').trim()!==id);saveLocal(source,records);invalidateCloudCache(source);return records;}
   function clearLocal(source){Storage.remove(storageKey(source));invalidateCloudCache(source);}
-  MW.RecordsRepository=Object.freeze({getLocal,saveLocal,mergeCloudWithLocal,isCloudFresh,invalidateCloudCache,fetchCloudPaged,fetchMerged,saveBatch,deleteTripCloud,markSynced,appendLocal,removeByIds,removeTripLocal,clearLocal});
+  MW.RecordsRepository=Object.freeze({getLocal,saveLocal,mergeCloudWithLocal,isCloudFresh,invalidateCloudCache,fetchCloudPage,fetchScoped,mergePageIntoLocal,fetchCloudPaged,fetchMerged,saveBatch,updateRecordCloud,deleteRecordCloud,deleteTripCloud,markSynced,appendLocal,removeByIds,removeTripLocal,clearLocal});
 })(window.MedWaste);

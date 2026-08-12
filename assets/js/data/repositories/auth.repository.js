@@ -12,6 +12,7 @@
   function register(payload) { return Api.post(Contracts.Actions.REGISTER, payload); }
   function forgotPassword(email) { return Api.post(Contracts.Actions.FORGOT_PASSWORD, { email }); }
   function logout() { return Api.post(Contracts.Actions.LOGOUT, {}); }
+  function logoutDetached() { return Api.postDetached(Contracts.Actions.LOGOUT, {}); }
 
-  MW.AuthRepository = Object.freeze({ login, register, forgotPassword, logout });
+  MW.AuthRepository = Object.freeze({ login, register, forgotPassword, logout, logoutDetached });
 })(window.MedWaste);

@@ -164,7 +164,7 @@ async function main() {
       const html = fs.readFileSync(file, 'utf8');
       const refs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(m => m[1]);
       for (const ref of refs) {
-        if (/^(https?:|data:|#)/i.test(ref)) continue;
+        if (/^(https?:|data:|tel:|mailto:|#)/i.test(ref)) continue;
         const clean = ref.split(/[?#]/)[0];
         assert(fs.existsSync(path.resolve(path.dirname(file), clean)), `${path.basename(file)} missing ${clean}`);
       }
@@ -211,6 +211,7 @@ async function main() {
       'assets/js/data/repositories/users.repository.js'
     ];
     for (const file of walk(ROOT, '.html')) {
+      if (path.basename(file) === 'home.html') continue; // landing page intentionally has a minimal zero-cloud bundle
       const html = fs.readFileSync(file, 'utf8');
       const positions = ordered.map(ref => html.indexOf(ref));
       assert(positions.every(pos => pos >= 0), `${path.basename(file)} missing Stage 6 dependency`);
@@ -334,16 +335,16 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.2.2', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.10', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.4.1', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.13', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.2.2', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.10', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.4.1', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.13', 'POST contractVersion missing');
   });
 
   await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
@@ -611,46 +612,19 @@ async function main() {
     assert(!JSON.stringify(snap).includes('very-secret-token'), 'diagnostics leaked token');
   });
 
-  await test('Stage 8 backend idempotency replays completed mutation without repeating side effect', () => {
+  await test('Stage 8.3 fast idempotency replays completed mutation without Sheet I/O', () => {
     const ctx = backendContext();
     ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs'].forEach(file => load(ctx, file));
     const store = new Map();
-    let nextRow = 2;
     ctx.withScriptLock_ = (_name, fn) => fn();
-    ctx.idempotencyRepositoryCount_ = () => store.size;
-    ctx.idempotencyRepositoryCleanupExpired_ = () => 0;
-    ctx.idempotencyRepositoryFind_ = key => store.get(key) || null;
-    ctx.idempotencyRepositoryCreate_ = entry => {
-      store.set(entry.key, {
-        rowNumber: nextRow++, key: entry.key, requestId: entry.requestId, action: entry.action,
-        status: 'PROCESSING', responseJson: '', createdAt: entry.createdAt, expiresAt: entry.expiresAt
-      });
-    };
-    ctx.idempotencyRepositoryResetProcessing_ = (rowNumber, createdAt, expiresAt) => {
-      for (const item of store.values()) if (item.rowNumber === rowNumber) {
-        item.status = 'PROCESSING'; item.responseJson = ''; item.createdAt = createdAt; item.expiresAt = expiresAt;
-      }
-    };
-    ctx.idempotencyRepositoryComplete_ = (rowNumber, response) => {
-      for (const item of store.values()) if (item.rowNumber === rowNumber) {
-        item.status = 'COMPLETED'; item.responseJson = JSON.stringify(response);
-      }
-    };
-    ctx.idempotencyRepositoryDelete_ = rowNumber => {
-      for (const [key, item] of store.entries()) if (item.rowNumber === rowNumber) store.delete(key);
-    };
+    ctx.cacheGetJson_ = key => store.get(key) || null;
+    ctx.cachePutJson_ = (key,value) => store.set(key, JSON.parse(JSON.stringify(value)));
+    ctx.cacheRemove_ = key => store.delete(key);
     load(ctx, 'Idempotency.gs');
-
     let sideEffects = 0;
     const params = { requestId: 'req-same-1' };
-    const first = ctx.executeIdempotentMutation_(ctx.API_ACTIONS.DELETE_TRIP, params, () => {
-      sideEffects += 1;
-      return ctx.success_({deleted: 3});
-    });
-    const second = ctx.executeIdempotentMutation_(ctx.API_ACTIONS.DELETE_TRIP, params, () => {
-      sideEffects += 1;
-      return ctx.success_({deleted: 99});
-    });
+    const first = ctx.executeIdempotentMutation_(ctx.API_ACTIONS.DELETE_TRIP, params, () => { sideEffects += 1; return ctx.success_({deleted: 3}); });
+    const second = ctx.executeIdempotentMutation_(ctx.API_ACTIONS.DELETE_TRIP, params, () => { sideEffects += 1; return ctx.success_({deleted: 99}); });
     assert(first.deleted === 3, 'first idempotent result wrong');
     assert(second.deleted === 3 && second.idempotentReplay === true, 'completed response was not replayed');
     assert(sideEffects === 1, `side effect executed ${sideEffects} times`);
@@ -950,13 +924,13 @@ async function main() {
     assert(/^MW-T-20260812-/.test(r.tripReference), 'treatment-side internal reference was not generated');
   });
 
-  await test('Stage 8.1.8 full-admin UI uses stable generic reconciliation action', () => {
-  const repo = read('assets/js/data/repositories/reconciliation.repository.js');
-  assert(repo.includes("Contracts.Actions.GET_RECONCILIATION"));
-  const fn = repo.match(/async function compareHealthAdmin\(filters\)\{([^}]|}[^;])*?\}/s);
-  assert(repo.includes("entityType:Contracts.EntityTypes.HEALTH_ADMIN"));
-  assert(repo.includes("adminScope:'admin'"));
-});
+  await test('Stage 8.3 full-admin UI bypasses fragile reconciliation endpoint', () => {
+    const repo = read('assets/js/data/repositories/reconciliation.repository.js');
+    assert(repo.includes('Contracts.Actions.GET_RECORDS'), 'admin reconciliation must use scoped records');
+    assert(!repo.includes('Contracts.Actions.GET_RECONCILIATION'), 'UI still depends on the old reconciliation endpoint');
+    assert(repo.includes('Promise.all'), 'facility/treatment scoped reads are not parallelized');
+    assert(repo.includes('ReconciliationEngine.build'), 'client reconciliation engine is not used');
+  });
 
 test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and authorized', () => {
     const backendContracts = fs.readFileSync(path.join(ROOT, 'Contracts.gs'), 'utf8');
@@ -1076,9 +1050,10 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     ctx.cacheRemove_ = () => {};
     ctx.cacheGetJson_ = () => null;
     ctx.cachePutJson_ = () => {};
+    ctx.sha256Hex_ = () => 'a'.repeat(64);
     load(ctx, 'EntityRepository.gs');
     const operations = [];
-    const current = [ctx.ENTITY_HEADERS, ['FAC-PERSIST','facility','منشأت حكومية','','Old Name',true,new Date(),new Date()]];
+    const current = [ctx.ENTITY_HEADERS, ['FAC-PERSIST','facility','منشأت حكومية','','Old Name',true,new Date(),new Date()], ['DIR-PERSIST','directorate','جهة إشرافية','','مديرية الشئون الصحية بالدقهلية',true,new Date(),new Date()]];
     const fakeSheet = {
       getDataRange(){ return {getValues(){ return current.map(row => row.slice()); }}; },
       getLastRow(){ return current.length; },
@@ -1136,7 +1111,7 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   await test('Stage 8.1.7 registration offers whole health administrations instead of their units', () => {
     const registerJs = read('assets/js/pages/register.js');
     const entitiesGs = read('Entities.gs');
-    assert(registerJs.includes("type==='إدارات صحية'?healthAdmins"), 'registration does not switch to health administration entities');
+    assert(registerJs.includes("if(type==='إدارات صحية')list=healthAdmins"), 'registration does not switch to health administration entities');
     assert(entitiesGs.includes("healthAdmins: entityRepositoryList_(ENTITY_TYPES.HEALTH_ADMIN"), 'registration endpoint does not expose health administrations');
     assert(entitiesGs.includes("x.mainType !== 'إدارات صحية'"), 'health-unit facilities are still independently registrable');
   });
@@ -1151,7 +1126,7 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   await test('Stage 8.1.7 administration account can select only its own units at intake', () => {
     const form = read('assets/js/features/trips/trip-form.js');
     const records = read('Records.gs');
-    assert(form.includes('isHealthAdminEntry') && form.includes("getSettings().healthAdmins?.[assignedAdminName()]"), 'administration intake does not restrict the unit list to the assigned administration');
+    assert(form.includes('isHealthAdminEntry') && form.includes("x.healthAdmin===assignedAdminName()"), 'administration intake does not restrict the unit list to the assigned administration');
     assert(records.includes("fac.healthAdmin") && records.includes("adminFound.entity.name") && records.includes('FORBIDDEN'), 'backend does not independently enforce administration-unit ownership');
   });
 
@@ -1276,6 +1251,155 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     assert(!page.includes('calculatedTotal < 60'), 'old generic minimum formula still exists');
   });
 
+  await test('Stage 8.3 client reconciliation matches a whole administration without facility selection', () => {
+    const ctx = frontendContext();
+    load(ctx,'assets/js/core/namespace.js');
+    load(ctx,'assets/js/core/contracts.js');
+    load(ctx,'assets/js/features/reconciliation/reconciliation.engine.js');
+    const E=ctx.window.MedWaste.ReconciliationEngine;
+    const facility=[
+      {facilityId:'FAC-A',facilityName:'وحدة أ',healthAdmin:'إدارة 1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'},
+      {facilityId:'FAC-B',facilityName:'وحدة ب',healthAdmin:'إدارة 1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:7,weightUnit:'كجم'}
+    ];
+    const treatment=[
+      {facilityId:'FAC-A',facilityName:'وحدة أ',healthAdmin:'إدارة 1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:5,weightUnit:'كجم'},
+      {facilityId:'FAC-B',facilityName:'وحدة ب',healthAdmin:'إدارة 1',reportDate:'2026-08-12',visitType:'نقل نفايات',wasteWeight:7,weightUnit:'كجم'}
+    ];
+    const out=E.build(facility,treatment,{entityType:'health_admin',entityId:'إدارة 1'});
+    assert(out.summary.facilitiesCount===2,'whole administration did not include all units');
+    assert(out.summary.matched===true&&out.summary.unmatchedDays===0,'whole administration should be fully matched');
+  });
+
+  await test('Stage 8.3 login bootstrap and instant logout reduce follow-up network waits', () => {
+    const auth=read('Auth.gs'), service=read('assets/js/features/auth/auth.service.js'), api=read('assets/js/core/api.js');
+    assert(auth.includes('loginBootstrapFromCache_')&&auth.includes('cacheGetJson_(SETTINGS_CACHE_KEY)'),'login still blocks on settings/entities sheet reads');
+    assert(service.includes('SettingsRepository.prime')&&service.includes('EntitiesRepository.prime'),'login bootstrap is not persisted locally');
+    assert(service.includes('logoutDetached')&&!service.includes('await AuthRepository.logout()'),'logout still blocks on network');
+    assert(api.includes('sendBeacon')&&api.includes('keepalive:true'),'detached logout transport missing');
+  });
+
+  await test('Stage 8.3 scoped record API filters before returning reconciliation payloads', () => {
+    const records=read('Records.gs'), repo=read('assets/js/data/repositories/reconciliation.repository.js');
+    assert(records.includes('var hasScope=')&&records.includes('recordRepositoryFindScoped_'),'get_records has no scoped fast path');
+    assert(repo.includes("payload.healthAdmin=filters.healthAdmin")&&repo.includes("payload.facilityId=filters.facilityId"),'reconciliation does not send server-side scope filters');
+  });
+
+  await test('Stage 8.3 save path avoids full record-id column download', () => {
+    const records=read('Records.gs'), repo=read('RecordRepository.gs');
+    assert(records.includes('recordRepositoryExistingIdsFor_')&&!records.includes('var existingIds = recordRepositoryExistingIds_('),'save still loads every historical record ID');
+    assert(repo.includes('createTextFinder(pattern)'),'targeted record-id lookup is missing');
+  });
+
+  await test('Stage 8.3 history and reports use bounded cloud reads', () => {
+    const view=read('assets/js/pages/view.js'), reports=read('assets/js/pages/reports.js'), repo=read('assets/js/data/repositories/records.repository.js');
+    assert(view.includes('fetchCloudPage')&&view.includes('loadMore'),'trip history still downloads all pages on initial load');
+    assert(reports.includes('fetchScoped')&&reports.includes('refreshReportData'),'reports still download all history before date filtering');
+    assert(repo.includes('async function fetchScoped')&&repo.includes('async function fetchCloudPage'),'bounded record repository methods are missing');
+  });
+
+
+  await test('Stage 8.4 production pages do not use Tailwind CDN', () => {
+    for (const file of walk(ROOT, '.html')) {
+      const html = fs.readFileSync(file, 'utf8');
+      assert(!html.includes('cdn.tailwindcss.com'), `${path.basename(file)} still uses Tailwind CDN`);
+      assert(html.includes('assets/css/tailwind.generated.css'), `${path.basename(file)} missing local generated CSS`);
+    }
+    const css=read('assets/css/tailwind.generated.css');
+    assert(css.length>20000,'generated Tailwind CSS looks incomplete');
+  });
+
+  await test('Stage 8.4 unified shell and footer cover protected pages', () => {
+    for (const name of ['index.html','view.html','reports.html','reconciliation.html','facility_report.html','admin_users.html','admin_audit.html']) {
+      assert(read(name).includes('assets/js/common/app-shell.js'), `${name} missing unified app shell`);
+    }
+    const shell=read('assets/js/common/app-shell.js');
+    assert(shell.includes('Dr Ahmad Adel'),'developer footer credit missing');
+    assert(shell.includes('د. محمد البدوى')&&shell.includes('01002876061'),'unit manager footer contact missing');
+  });
+
+  await test('Stage 8.4 login lands on the zero-cloud home page', () => {
+    const login=read('assets/js/pages/login.js'), home=read('home.html'), homeJs=read('assets/js/pages/home.js');
+    assert(login.includes("window.location.href = 'home.html'"),'login does not redirect to home');
+    assert(home.includes('route-truck')&&home.includes('route-node')&&home.includes('class="wheel"'),'home route animation missing');
+    assert(!homeJs.includes('Api.')&&!homeJs.includes('fetch('),'home page should render without cloud calls');
+  });
+
+  await test('Stage 8.4 administration reconciliation is facility-ID scoped on both server and client', () => {
+    const repo=read('assets/js/data/repositories/reconciliation.repository.js'), records=read('Records.gs');
+    assert(repo.includes('allowedIds.has(clean(r.facilityId))'),'client admin whitelist missing');
+    assert(repo.includes('healthAdminId'),'client does not send stable administration identity');
+    assert(records.includes('entityRepositoryFacilitiesForHealthAdmin_(adminKey)'),'backend does not resolve administration units');
+    assert(records.includes('scopeFilters.facilityIds'),'backend admin scope is not converted to facility IDs');
+  });
+
+  await test('Stage 8.4 API deduplicates identical in-flight reads', () => {
+    const api=read('assets/js/core/api.js');
+    assert(api.includes('const inFlightReads = new Map()'),'read dedupe map missing');
+    assert(api.includes('if (inFlightReads.has(key)) return inFlightReads.get(key)'),'identical reads are not deduplicated');
+  });
+
+  await test('Stage 8.4 empty administration scope can never widen to all records', () => {
+    const records=read('Records.gs');
+    assert(records.includes('if(!adminFacilities.length)'), 'empty administration guard missing');
+    assert(records.includes('scopeEmpty:true'), 'empty administration must return an explicit empty scoped result');
+  });
+
+  await test('Stage 8.4 save UI is optimistic while cloud sync continues', () => {
+    const trips=read('assets/js/features/trips/trips.service.js'), form=read('assets/js/features/trips/trip-form.js');
+    assert(trips.includes('function saveResponsive'),'responsive save service missing');
+    assert(trips.includes('cloudPromise'),'background cloud confirmation missing');
+    assert(form.includes('Trips.saveResponsive'),'entry form still blocks on cloud save');
+    assert(form.includes('تم تسجيل الإدخال فوراً'),'instant save feedback missing');
+  });
+
+  await test('Stage 8.4 login path caches user lookup and batches session trimming', () => {
+    const users=read('UserRepository.gs'), sessions=read('SessionRepository.gs');
+    assert(users.includes('userLookupCacheKey_')&&users.includes('USER_LOOKUP_CACHE_SECONDS'),'user login lookup cache missing');
+    assert(sessions.includes('getRange(2,2,lastRow-1,3).getValues()'),'session trimming is not batched');
+  });
+  await test('Stage 8.4.1 table headers and home animation are visually isolated', () => {
+    const css=read('assets/css/base.css'),home=read('home.html');
+    assert(css.includes('table thead th{display:table-cell!important')||css.includes('table thead th{\n  position:static!important'),'table header hard reset missing');
+    assert(css.includes('routeStopGlow')&&css.includes('wheelSpin'),'enhanced route animation missing');
+    assert(!home.includes('<strong>المنشأة الصحية</strong>')&&!home.includes('<strong>وحدة المعالجة</strong>'),'route labels were not removed below icons');
+  });
+
+  await test('Stage 8.4.1 registration exposes complete assignment categories and directorate', () => {
+    const html=read('register.html'),js=read('assets/js/pages/register.js'),entities=read('Entities.gs');
+    assert(html.includes('مديرية الشئون الصحية بالدقهلية'),'directorate registration option missing');
+    assert(js.includes("if(type==='إدارات صحية')list=healthAdmins")&&js.includes('list=directorates'),'registration category mapping incomplete');
+    assert(entities.includes('facilities: data.facilities.filter')&&entities.includes('healthAdmins: data.healthAdmins')&&entities.includes('directorates: data.directorates'),'registration endpoint payload incomplete');
+  });
+
+  await test('Stage 8.4.1 users page is cached, single-request and lazy-renders entity choices', () => {
+    const users=read('UserRepository.gs'),page=read('assets/js/pages/admin_users.js'),repo=read('assets/js/data/repositories/users.repository.js');
+    assert(users.includes("medwaste:users:list:")&&users.includes('USER_LIST_CACHE_SECONDS'),'backend user-list cache missing');
+    assert(repo.includes('listBundle')&&page.includes('UsersRepository.listBundle()'),'users page does not use one bundled request');
+    assert(page.includes("sel.dataset.loaded='0'")&&page.includes("e.target.dataset.loaded!=='1'"),'entity dropdowns are not lazily populated');
+  });
+
+  await test('Stage 8.4.1 admin can reassign and delete users', () => {
+    const page=read('assets/js/pages/admin_users.js'),backend=read('Users.gs'),router=read('Router.gs');
+    assert(page.includes('update-role-btn')&&page.includes('entity-select'),'user reassignment controls missing');
+    assert(page.includes('delete-user-btn')&&page.includes('UsersRepository.deleteUser'),'user delete control missing');
+    assert(backend.includes('function deleteUser_')&&backend.includes('LAST_ADMIN'),'backend user deletion safeguards missing');
+    assert(router.includes('API_ACTIONS.DELETE_USER'),'delete user route missing');
+  });
+
+  await test('Stage 8.4.1 supervisor/admin can create and edit both entry sources while delete stays admin-only', () => {
+    const form=read('assets/js/features/trips/trip-form.js'),view=read('assets/js/pages/view.js'),contracts=read('assets/js/core/contracts.js');
+    assert(form.includes('privilegedEntrySource')&&form.includes('Contracts.EntrySources.TREATMENT')&&form.includes('Contracts.EntrySources.FACILITY'),'privileged source selector missing');
+    assert(view.includes('Contracts.Actions.UPDATE_RECORD')&&view.includes('Records.updateRecordCloud'),'record edit flow missing');
+    assert(view.includes('Contracts.Actions.DELETE_RECORD')&&view.includes('Records.deleteRecordCloud'),'record delete flow missing');
+    assert(contracts.includes("delete_record:[Roles.ADMIN]")&&contracts.includes("update_record:[Roles.SUPERVISOR,Roles.ADMIN]"),'record correction RBAC mismatch');
+  });
+
+  await test('Stage 8.4.1 public registration read no longer performs periodic sheet synchronization', () => {
+    const entities=read('Entities.gs'),settings=read('Settings.gs');
+    assert(entities.includes('only bootstrap the registry if it is actually empty'),'fast registration directory bootstrap missing');
+    assert(settings.includes('entityRepositorySyncFromSettings_()'),'settings save no longer synchronizes the entity registry');
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
@@ -1293,13 +1417,13 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.2.2', contractVersion: '1.10', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.4.1', contractVersion: '1.13', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.2.2', 'health version mismatch');
-    assert(data.appVersion === '8.2.2', 'response appVersion missing');
-    assert(data.contractVersion === '1.10', 'health contract version mismatch');
+    assert(data.version === '8.4.1', 'health version mismatch');
+    assert(data.appVersion === '8.4.1', 'response appVersion missing');
+    assert(data.contractVersion === '1.13', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });

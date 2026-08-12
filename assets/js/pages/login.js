@@ -3,7 +3,7 @@
 
   const { Session, Auth } = MW;
   if (Session.isLoggedIn()) {
-    window.location.href = 'index.html';
+    window.location.href = 'home.html';
     return;
   }
 
@@ -19,7 +19,7 @@
         document.getElementById('email').value,
         document.getElementById('password').value
       );
-      window.location.href = 'index.html';
+      window.location.href = 'home.html';
     } catch (error) {
       message.innerText = error.message || 'خطأ في الاتصال بالخادم';
       message.classList.remove('hidden');

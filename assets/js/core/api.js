@@ -4,6 +4,7 @@
   const { Config, Session, Contracts, Errors, Utils } = MW;
   const Logger = MW.Logger || { debug() {}, info() {}, warn() {}, error() {} };
   const RESERVED_KEYS = new Set(['action', 'requestId', 'clientVersion', 'contractVersion', 'environment', 'token']);
+  const inFlightReads = new Map();
   const RETRYABLE_POST_ACTIONS = new Set([
     Contracts.Actions.LOGOUT,
     Contracts.Actions.UPDATE_ROLE,
@@ -145,9 +146,16 @@
   }
 
   async function read(action, params = {}) {
+    /* Deduplicate identical protected reads fired by multiple widgets during the same page load. */
+    const stable = Object.keys(params || {}).sort().map(key => `${key}=${String(params[key] ?? '')}`).join('&');
+    const key = `${action}|${stable}`;
+    if (inFlightReads.has(key)) return inFlightReads.get(key);
     const requestId = Utils.generateId('req-');
     const formData = createPostBody(action, params, requestId, true);
-    return request(Config.apiUrl, {method: 'POST', body: formData}, {requestId, action, retryable: true});
+    const promise = request(Config.apiUrl, {method: 'POST', body: formData}, {requestId, action, retryable: true})
+      .finally(() => inFlightReads.delete(key));
+    inFlightReads.set(key, promise);
+    return promise;
   }
 
   async function post(action, payload = {}) {
@@ -161,7 +169,18 @@
     );
   }
 
+
+  function postDetached(action, payload = {}) {
+    const requestId = Utils.generateId('req-');
+    const includeToken = !Contracts.isPublic(action);
+    const formData = createPostBody(action, payload, requestId, includeToken);
+    try {
+      if (navigator && typeof navigator.sendBeacon === 'function' && navigator.sendBeacon(Config.apiUrl, formData)) return true;
+    } catch (_) {}
+    try { fetch(Config.apiUrl, {method:'POST', body:formData, keepalive:true}).catch(()=>{}); return true; } catch (_) { return false; }
+  }
+
   async function health() { return get(Contracts.Actions.HEALTH); }
 
-  MW.Api = Object.freeze({get, read, post, health});
+  MW.Api = Object.freeze({get, read, post, postDetached, health});
 })(window.MedWaste);

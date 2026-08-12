@@ -31,7 +31,7 @@
   }
 
   async function refreshFromCloud(options = {}) {
-    const maxAgeMs = options.force ? 0 : (Number(options.maxAgeMs) || 120000);
+    const maxAgeMs = options.force ? 0 : (Number(options.maxAgeMs) || 300000);
     if (!options.force && SettingsRepository.isCloudFresh(maxAgeMs)) return getData();
     const cloudData = await SettingsRepository.fetchCloud(SettingsDefaults);
     if (!cloudData) return getData();

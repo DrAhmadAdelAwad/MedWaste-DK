@@ -6,7 +6,7 @@
 
   if (!currentUser || !Session.getToken() || !Contracts.canRole(currentUser.role, Contracts.Actions.GET_AUDIT_LOG)) {
     alert('عفواً، هذه الصفحة مخصصة للمدير فقط.');
-    window.location.href = 'index.html';
+    window.location.href = 'home.html';
     return;
   }
 

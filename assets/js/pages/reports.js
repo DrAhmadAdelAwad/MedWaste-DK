@@ -8,6 +8,7 @@
   let unitsChartInstance = null;
   let typesChartInstance = null;
   let currentFilteredRecords = [];
+  let reportRecords = [];
 
   document.addEventListener('DOMContentLoaded', async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -17,15 +18,7 @@
     document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
 
     bindSourceToggle();
-    generateReports();
-    UI.setSyncBadge('جاري تحديث السجلات... ⏳', 'loading');
-    try {
-      await Records.fetchMerged(currentSource);
-      generateReports();
-      UI.setSyncBadge('✅ تم تحديث السجلات', 'success', 2000);
-    } catch (error) {
-      UI.setSyncBadge('❌ تعذر الاتصال (عرض محلي)', 'error', 3000);
-    }
+    await refreshReportData();
   });
 
         function bindSourceToggle() {
@@ -45,24 +38,28 @@
                 document.getElementById('primaryChartTitle').textContent = currentSource === Contracts.EntrySources.FACILITY
                     ? 'الأوزان المسجلة حسب المنشأة (كجم)'
                     : 'الأوزان الموردة لكل وحدة معالجة (كجم)';
-                generateReports();
-                UI.setSyncBadge('عرض فوري من الذاكرة المحلية — جاري تحديث المصدر... ⏳', 'loading');
-                try { await Records.fetchMerged(currentSource); generateReports(); UI.setSyncBadge('✅ تم تحديث البيانات', 'success', 1500); }
-                catch (_) { generateReports(); UI.setSyncBadge('❌ عرض البيانات المحلية', 'error', 2200); }
+                await refreshReportData();
             });
             document.getElementById('primaryChartTitle').textContent = currentSource === Contracts.EntrySources.FACILITY
                 ? 'الأوزان المسجلة حسب المنشأة (كجم)'
                 : 'الأوزان الموردة لكل وحدة معالجة (كجم)';
         }
 
-        function resetFilters() {
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            generateReports();
+        async function resetFilters() {
+            const today=new Date().toISOString().split('T')[0],first=new Date();first.setDate(1);
+            document.getElementById('startDate').value=first.toISOString().split('T')[0];document.getElementById('endDate').value=today;
+            await refreshReportData();
+        }
+        async function refreshReportData(){
+            const startDate=document.getElementById('startDate').value,endDate=document.getElementById('endDate').value;
+            const local=Records.getLocal(currentSource).filter(r=>(!startDate||r.reportDate>=startDate)&&(!endDate||r.reportDate<=endDate));
+            reportRecords=local;generateReports();UI.setSyncBadge(local.length?'عرض فوري — جاري تحديث الفترة المختارة... ⏳':'جاري تحميل الفترة المختارة... ⏳','loading');
+            try{reportRecords=await Records.fetchScoped(currentSource,{startDate,endDate});generateReports();UI.setSyncBadge('✅ تم تحديث الفترة المختارة','success',1500);}
+            catch(_){reportRecords=local;generateReports();UI.setSyncBadge(local.length?'⚠️ عرض النسخة المحلية للفترة':'❌ تعذر تحميل التقرير','error',2400);}
         }
 
         function generateReports() {
-            const allRecords = Records.getLocal(currentSource);
+            const allRecords = reportRecords;
             
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
@@ -222,8 +219,8 @@
         }
 
 // Static DOM event bindings (moved out of HTML in Stage 1)
-document.getElementById('generateReportsControl')?.addEventListener('click', (event) => {
-    generateReports();
+document.getElementById('generateReportsControl')?.addEventListener('click', async (event) => {
+    await refreshReportData();
 });
 document.getElementById('resetFiltersControl')?.addEventListener('click', (event) => {
     resetFilters();

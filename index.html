@@ -5,10 +5,10 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>منظومة إدارة النفايات الطبية - مديرية الشؤون الصحية بالدقهلية</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="assets/css/tailwind.generated.css">
 <link href="assets/css/base.css" rel="stylesheet"/>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 sm:p-6">
+<body class="has-app-shell bg-slate-100 min-h-screen p-4 sm:p-6">
 <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
 <!-- ترويسة الموقع الموحدة مع التنقل -->
 <div class="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -54,6 +54,21 @@
                     بيانات خط السير والرحلة (ثابتة لجميع منشآت هذه الجولة)
                 </h2>
 <div id="entryIdentityBanner" class="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-xs text-slate-700"></div>
+<div id="privilegedEntryControls" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 bg-red-50 border border-red-200 rounded-xl p-4">
+  <div>
+    <label class="block text-xs font-bold text-red-900 mb-1">نوع التسجيل — للمشرف/المدير فقط</label>
+    <select id="privilegedEntrySource" class="w-full px-3 py-2 border border-red-200 rounded-xl bg-white text-sm font-bold text-red-900">
+      <option value="facility">تسجيل يتبع جهة المنشأة</option>
+      <option value="treatment">تسجيل يتبع وحدة المعالجة</option>
+    </select>
+  </div>
+  <div id="privilegedTreatmentUnitWrap" class="hidden">
+    <label class="block text-xs font-bold text-red-900 mb-1">وحدة المعالجة صاحبة التسجيل</label>
+    <select id="privilegedTreatmentUnit" class="w-full px-3 py-2 border border-red-200 rounded-xl bg-white text-sm">
+      <option value="">-- اختر وحدة المعالجة --</option>
+    </select>
+  </div>
+</div>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 <!-- 1. تاريخ البلاغ -->
 <div>
@@ -304,5 +319,6 @@
 <script src="assets/js/features/settings/settings.manager.js"></script>
 <script src="assets/js/common/access-control.js"></script>
 <script src="assets/js/pages/index.js"></script>
+<script src="assets/js/common/app-shell.js"></script>
 </body>
 </html>

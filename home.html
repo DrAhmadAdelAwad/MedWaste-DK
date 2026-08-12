@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>الرئيسية - منظومة النفايات الطبية الخطرة</title>
+  <link rel="stylesheet" href="assets/css/tailwind.generated.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+</head>
+<body class="home-page">
+  <main class="home-wrap">
+    <section class="home-hero">
+      <div class="home-hero-grid">
+        <div>
+          <span class="home-kicker">● منظومة رقمية لإدارة النفايات الطبية الخطرة</span>
+          <h1>أهلاً <span id="homeUserName">بك</span>،<br>كل رحلة أصبحت قابلة للتتبع والمراجعة.</h1>
+          <p>تسجيل رحلات المنشآت ووحدات المعالجة، مراجعة الأوزان، المطابقة، التقارير والمطالبات في مسار واحد واضح يساعد الوحدة على العمل بسرعة ودقة.</p>
+          <div class="home-cta">
+            <a class="home-cta-primary" href="index.html">بدء تسجيل إدخال ←</a>
+            <a class="home-cta-secondary" href="reconciliation.html">فتح المطابقة</a>
+          </div>
+        </div>
+        <div class="route-scene" aria-label="حركة رحلة النفايات من المنشأة إلى المعالجة">
+          <div class="route-city">
+            <div class="route-road"></div>
+            <div class="route-node route-hospital"><div class="route-node-icon"><svg viewBox="0 0 64 64" fill="none"><rect x="10" y="14" width="44" height="42" rx="6" stroke="currentColor" stroke-width="4"/><path d="M32 22v20M22 32h20" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg></div></div>
+            <div class="route-node route-unit"><div class="route-node-icon"><svg viewBox="0 0 64 64" fill="none"><path d="M14 49h36M18 49V23l14-9 14 9v26" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M27 29h10v12H27z" stroke="currentColor" stroke-width="3"/></svg></div></div>
+            <div class="route-node route-treatment"><div class="route-node-icon"><svg viewBox="0 0 64 64" fill="none"><path d="M16 52h34V29H16v23Zm8-23V17h10v12M42 29V12" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/><path d="M22 39h22M22 46h22" stroke="currentColor" stroke-width="3"/></svg></div></div>
+            <div class="route-truck"><svg viewBox="0 0 120 70"><path d="M8 18h67v35H8z" fill="#fff"/><path d="M75 30h22l15 13v10H75z" fill="#ffe4e6"/><path d="M86 33h9l10 9H86z" fill="#991b1b"/><circle class="wheel" cx="29" cy="56" r="9" fill="#1f2937"/><circle class="wheel" cx="91" cy="56" r="9" fill="#1f2937"/><circle cx="29" cy="56" r="4" fill="#cbd5e1"/><circle cx="91" cy="56" r="4" fill="#cbd5e1"/><path d="M38 27h18M47 18v18" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-info-bar">
+      <div class="home-info"><span>المستخدم الحالي</span><strong id="homeRole">—</strong></div>
+      <div class="home-info"><span>نطاق العمل</span><strong id="homeEntity">—</strong></div>
+      <div class="home-info"><span>اليوم</span><strong id="homeDate">—</strong></div>
+    </section>
+
+    <section class="home-grid">
+      <a class="home-card" href="index.html"><b>تسجيل رحلة / إدخال</b><p>إدخال بيانات الرحلة والوزن بسرعة مع المزامنة السحابية.</p></a>
+      <a class="home-card" href="view.html"><b>سجل الرحلات</b><p>مراجعة أحدث الرحلات وتحميل الأقدم عند الحاجة فقط.</p></a>
+      <a class="home-card" href="reports.html"><b>التقارير والتحليل</b><p>تقارير زمنية وحسابات مالية على الفترة المطلوبة فقط.</p></a>
+      <a class="home-card" href="reconciliation.html"><b>المطابقة</b><p>مقارنة إدخالات المنشآت مع وحدات المعالجة رحلة برحلة.</p></a>
+    </section>
+  </main>
+
+<script src="assets/js/core/namespace.js"></script>
+<script src="assets/js/config/app-config.js"></script>
+<script src="assets/js/core/contracts.js"></script>
+<script src="assets/js/core/logger.js"></script>
+<script src="assets/js/core/storage.js"></script>
+<script src="assets/js/core/session.js"></script>
+<script src="assets/js/core/utils.js"></script>
+<script src="assets/js/core/errors.js"></script>
+<script src="assets/js/core/validators.js"></script>
+<script src="assets/js/core/api.js"></script>
+<script src="assets/js/domain/user.entity.js"></script>
+<script src="assets/js/data/mappers/user.mapper.js"></script>
+<script src="assets/js/data/repositories/auth.repository.js"></script>
+<script src="assets/js/core/diagnostics.js"></script>
+<script src="assets/js/features/auth/auth.service.js"></script>
+<script src="assets/js/common/access-control.js"></script>
+<script src="assets/js/common/app-shell.js"></script>
+<script src="assets/js/pages/home.js"></script>
+</body>
+</html>

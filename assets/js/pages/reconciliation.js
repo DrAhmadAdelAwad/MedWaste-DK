@@ -95,7 +95,8 @@
     const wholeAdmin=mainType==='إدارات صحية'&&isWholeAdminMode();
     if(wholeAdmin){
       if(!healthAdmin){alert('اختر الإدارة الصحية أولاً.');return;}
-      filters={...filters,healthAdmin,entityId:healthAdmin,entityType:Contracts.EntityTypes.HEALTH_ADMIN,scopeType:Contracts.EntityTypes.HEALTH_ADMIN,adminScope:'admin',compareMode:'health_admin',facilityMainType:'إدارات صحية',mainType:'إدارات صحية'};
+      const allowedFacilityIds=facilities.filter(f=>f.mainType==='إدارات صحية'&&String(f.healthAdmin||'').trim()===String(healthAdmin||'').trim()).map(f=>f.entityId).filter(Boolean);
+      filters={...filters,healthAdmin,entityId:healthAdmin,entityType:Contracts.EntityTypes.HEALTH_ADMIN,scopeType:Contracts.EntityTypes.HEALTH_ADMIN,adminScope:'admin',compareMode:'health_admin',facilityMainType:'إدارات صحية',mainType:'إدارات صحية',allowedFacilityIds};
     }else{
       const facilityId=document.getElementById('facilityId').value;
       if(!facilityId){alert(mainType==='إدارات صحية'?'اختر الوحدة الصحية أولاً.':'اختر المنشأة أولاً.');return;}
@@ -108,6 +109,10 @@
   }
 
   document.addEventListener('DOMContentLoaded',async()=>{
+    const today=new Date(),start=new Date(today.getFullYear(),today.getMonth(),1);
+    const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const startEl=document.getElementById('startDate'),endEl=document.getElementById('endDate');
+    if(startEl&&!startEl.value)startEl.value=fmt(start);if(endEl&&!endEl.value)endEl.value=fmt(today);
     SettingsService.reloadFromLocal();applySettings();
     const cachedDirectory=EntitiesRepository.cached?.();
     if(cachedDirectory) facilities=cachedDirectory.facilities||[];

@@ -15,7 +15,7 @@
         Logger.warn('pending_settings_retry_failed', { error });
       }
 
-      await Promise.all([SettingsService.refreshFromCloud({maxAgeMs:1800000}), EntitiesRepository.list({maxAgeMs:1800000}).catch(()=>null)]);
+      await SettingsService.refreshFromCloud({maxAgeMs:1800000});
       TripForm.refreshOptions();
       SettingsManager.refresh();
       UI.setSyncBadge('✅ تم مزامنة القوائم والسيارات والسائقين', 'success', 2500);

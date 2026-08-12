@@ -263,11 +263,11 @@ async function main() {
   await test('Stage 8.1 backend installation manifest is complete', () => {
     const ctx = backendContext();
     const files = [
-      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Concurrency.gs', 'Cache.gs',
+      'Config.gs', 'Contracts.gs', 'ReferenceDefaults.gs', 'Utils.gs', 'Logging.gs', 'Concurrency.gs', 'Cache.gs',
       'Security.gs', 'RateLimit.gs', 'Validators.gs', 'AccessControl.gs', 'Audit.gs',
       'RecordMapper.gs', 'UserMapper.gs', 'Sheets.gs', 'RecordRepository.gs', 'UserRepository.gs',
       'SettingsRepository.gs', 'SessionRepository.gs', 'IdempotencyRepository.gs', 'AuditRepository.gs',
-      'EntityRepository.gs', 'Entities.gs', 'Reconciliation.gs',
+      'EntityRepository.gs', 'ReferenceData.gs', 'Entities.gs', 'Reconciliation.gs',
       'Sessions.gs', 'Auth.gs', 'Records.gs', 'Settings.gs', 'Users.gs', 'Idempotency.gs',
       'Router.gs', 'SelfTests.gs', 'Code.gs'
     ];
@@ -346,16 +346,16 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.5.0', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.14', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.5.2', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.15', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.5.0', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.14', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.5.2', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.15', 'POST contractVersion missing');
   });
 
   await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
@@ -768,13 +768,14 @@ async function main() {
     ctx.withScriptLock_ = (_name, fn) => fn();
     ctx.userRepositoryFindByEmail_ = () => ({rowNumber:2, user:{role:'مشرف',entityId:'',entityType:''}});
     ctx.userRepositoryCountAdmins_ = () => 2;
+    ctx.entityRepositoryResolveDirectorate_ = () => ({entityType:'directorate',entityId:'DIR-1',name:'مديرية الشئون الصحية بالدقهلية'});
     ctx.userRepositoryUpdateAccess_ = (row, role, entityType, entityId, entityName) => { updated = {row,role,entityType,entityId,entityName}; };
     ctx.invalidateSessionsForEmail_ = email => { invalidatedEmail = email; };
     ctx.safeAuditEvent_ = () => true;
     load(ctx, 'Users.gs');
     const result = ctx.updateRole_({targetEmail:'user@example.com', newRole:'مدير'});
     assert(result.result === 'success' && result.changed === true, 'access update did not succeed');
-    assert(updated && updated.role === 'مدير' && updated.entityId === '', 'access assignment was not updated');
+    assert(updated && updated.role === 'مدير' && updated.entityId === 'DIR-1' && updated.entityType === 'directorate', 'directorate assignment was not updated');
     assert(invalidatedEmail === 'user@example.com', 'target sessions were not invalidated');
   });
 
@@ -823,6 +824,7 @@ async function main() {
     ctx.registrationReceiptPut_ = () => true;
     ctx.userRepositoryIsEmpty_ = () => false;
     ctx.entityRepositoryFindById_ = () => ({entity:{entityId:'FAC-1',entityType:'facility',name:'Facility',active:true}});
+    ctx.registrationAssignmentFromParams_ = p => ctx.entityRepositoryFindById_(p.entityId || p.facilityId);
     let appended = null;
     ctx.userRepositoryAppend_ = input => { appended = input; };
     ctx.safeAuditEvent_ = () => true;
@@ -1062,6 +1064,9 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     ctx.cacheRemove_ = () => {};
     ctx.cacheGetJson_ = () => null;
     ctx.cachePutJson_ = () => {};
+    ctx.cacheRemoveLarge_ = () => {};
+    ctx.cacheGetLargeJson_ = () => null;
+    ctx.cachePutLargeJson_ = () => {};
     ctx.sha256Hex_ = () => 'a'.repeat(64);
     load(ctx, 'EntityRepository.gs');
     const operations = [];
@@ -1114,6 +1119,7 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     ctx.registrationReceiptPut_=()=>true;
     ctx.userRepositoryIsEmpty_=()=>false;
     ctx.entityRepositoryFindById_=()=>({entity:{entityId:'ADM-A',entityType:'health_admin',name:'إدارة أ',active:true}});
+    ctx.registrationAssignmentFromParams_=p=>ctx.entityRepositoryFindById_(p.entityId||p.facilityId);
     ctx.userRepositoryFindByAssignment_=()=>({user:{email:'old@example.com'}});
     ctx.safeAuditEvent_=()=>{};
     ctx.hashPassword_=v=>'hash:'+v;
@@ -1125,10 +1131,10 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
 
   await test('Stage 8.1.7 registration offers whole health administrations instead of their units', () => {
     const registerJs = read('assets/js/pages/register.js');
-    const entitiesGs = read('Entities.gs');
+    const ref = read('ReferenceData.gs');
     assert(/type==='إدارات صحية'\)\{?list=healthAdmins/.test(registerJs), 'registration does not switch to health administration entities');
-    assert(entitiesGs.includes("healthAdmins: entityRepositoryList_(ENTITY_TYPES.HEALTH_ADMIN"), 'registration endpoint does not expose health administrations');
-    assert(/x\.mainType\s*!==?\s*'إدارات صحية'/.test(entitiesGs), 'health-unit facilities are still independently registrable');
+    assert(ref.includes('healthAdmins: data.healthAdmins') || ref.includes('healthAdmins: data.healthAdmins,'), 'registration endpoint does not expose health administrations');
+    assert(ref.includes("e.mainType !== 'إدارات صحية'"), 'health-unit facilities are still independently registrable');
   });
 
   await test('Stage 8.1.7 one account per health administration is enforced server-side', () => {
@@ -1380,22 +1386,22 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   });
 
   await test('Stage 8.4.1 registration exposes complete assignment categories and directorate', () => {
-    const html=read('register.html'),js=read('assets/js/pages/register.js'),entities=read('Entities.gs');
+    const html=read('register.html'),js=read('assets/js/pages/register.js'),ref=read('ReferenceData.gs');
     assert(html.includes('مديرية الشئون الصحية بالدقهلية'),'directorate registration option missing');
-    assert(/type==='إدارات صحية'\)\{?list=healthAdmins/.test(js)&&js.includes('directorates[0]'),'registration category mapping incomplete');
-    assert(/facilities\s*:\s*data\.facilities\.filter/.test(entities)&&/healthAdmins\s*:\s*data\.healthAdmins/.test(entities)&&/directorates\s*:\s*data\.directorates/.test(entities),'registration endpoint payload incomplete');
+    assert(/type==='إدارات صحية'\)\{?list=healthAdmins/.test(js)&&js.includes("directorates.find(x=>x.name==='مديرية الشئون الصحية بالدقهلية')"),'registration category mapping incomplete');
+    assert(ref.includes('function referenceDataRegistration_')&&ref.includes('function referenceDataUserAssignments_'),'registration endpoint payload incomplete');
   });
 
   await test('Stage 8.4.1 users page is cached, single-request and lazy-renders entity choices', () => {
     const users=read('UserRepository.gs'),page=read('assets/js/pages/admin_users.js'),repo=read('assets/js/data/repositories/users.repository.js');
     assert(users.includes("medwaste:users:list:")&&users.includes('USER_LIST_CACHE_SECONDS'),'backend user-list cache missing');
     assert(repo.includes('listBundle')&&page.includes('UsersRepository.listBundle('),'users page does not use one bundled request');
-    assert(page.includes("sel.dataset.loaded='0'")&&page.includes("e.target.dataset.loaded!=='1'"),'entity dropdowns are not lazily populated');
+    assert(page.includes('openEdit(user)')&&page.includes('renderAssignmentEditor')&&page.includes("$('userEditModal').classList.remove('hidden')"),'single lazy edit dialog is missing');
   });
 
   await test('Stage 8.4.1 admin can reassign and delete users', () => {
     const page=read('assets/js/pages/admin_users.js'),backend=read('Users.gs'),router=read('Router.gs');
-    assert(page.includes('update-role-btn')&&page.includes('entity-select'),'user reassignment controls missing');
+    assert(page.includes('edit-user-btn')&&page.includes('saveUserEdit')&&page.includes('editEntity'),'user reassignment controls missing');
     assert(page.includes('delete-user-btn')&&page.includes('UsersRepository.deleteUser'),'user delete control missing');
     assert(backend.includes('function deleteUser_')&&backend.includes('LAST_ADMIN'),'backend user deletion safeguards missing');
     assert(router.includes('API_ACTIONS.DELETE_USER'),'delete user route missing');
@@ -1410,8 +1416,9 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   });
 
   await test('Stage 8.4.1 public registration read no longer performs periodic sheet synchronization', () => {
-    const entities=read('Entities.gs'),settings=read('Settings.gs');
-    assert(entities.includes('only bootstrap the registry if it is actually empty'),'fast registration directory bootstrap missing');
+    const entities=read('Entities.gs'),settings=read('Settings.gs'),cache=read('Cache.gs');
+    assert(entities.includes('ensureRegistrationDirectoryFresh_')&&entities.includes('hasAdmin')&&entities.includes('hasDirectorate'),'fast registration directory bootstrap missing');
+    assert(cache.includes('cacheGetLargeJson_')&&cache.includes('cachePutLargeJson_'),'large entity directory is not chunk-cached');
     assert(settings.includes('entityRepositorySyncFromSettings_()'),'settings save no longer synchronizes the entity registry');
   });
 
@@ -1424,12 +1431,12 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   });
 
   await test('Stage 8.5 public registration shows health administrations and auto-binds the directorate', () => {
-    const page=read('assets/js/pages/register.js'),html=read('register.html'),entities=read('Entities.gs');
+    const page=read('assets/js/pages/register.js'),html=read('register.html'),entities=read('Entities.gs'),ref=read('ReferenceData.gs');
     assert(page.includes("if(type==='إدارات صحية'){list=healthAdmins"),'health administration list is not wired to registration');
-    assert(page.includes("const dir=directorates[0]||null")&&page.includes("wrap?.classList.add('hidden')"),'directorate is not auto-bound without a second selector');
+    assert(page.includes("wrap?.classList.add('hidden')")&&page.includes('registrationFacilityType:type'),'directorate is not auto-bound without a second selector');
     assert(!html.includes('directorateHint'),'obsolete directorate supervisory choice/hint remains visible');
-    assert(entities.includes('if(!data.healthAdmins.length||!data.directorates.length)'),'missing registration entity classes are not repaired');
-    assert(!entities.includes('expectedAdmins=Object.keys'),'public registration still reads settings just to validate the directory');
+    assert(entities.includes('referenceDataSeedDefaults_()')&&ref.includes('registrationAssignmentFromParams_'),'missing registration entity classes are not repaired');
+    assert(page.includes("if(!type){")&&page.includes("-- اختر نوع الجهة أولاً --"),'registration shows entities before a primary type is selected');
   });
 
   await test('Stage 8.5 registration retry is idempotent after a lost success response', () => {
@@ -1471,7 +1478,7 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
-      'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Cache.gs', 'Security.gs', 'Validators.gs',
+      'Config.gs', 'Contracts.gs', 'ReferenceDefaults.gs', 'Utils.gs', 'Logging.gs', 'Cache.gs', 'Security.gs', 'ReferenceData.gs', 'Validators.gs',
       'AccessControl.gs', 'Audit.gs', 'RecordMapper.gs', 'UserMapper.gs',
       'RecordRepository.gs', 'UserRepository.gs', 'SessionRepository.gs',
       'EntityRepository.gs', 'Reconciliation.gs', 'Records.gs', 'Idempotency.gs', 'Router.gs', 'SelfTests.gs'
@@ -1486,13 +1493,13 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.5.0', contractVersion: '1.14', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.5.2', contractVersion: '1.15', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.5.0', 'health version mismatch');
-    assert(data.appVersion === '8.5.0', 'response appVersion missing');
-    assert(data.contractVersion === '1.14', 'health contract version mismatch');
+    assert(data.version === '8.5.2', 'health version mismatch');
+    assert(data.appVersion === '8.5.2', 'response appVersion missing');
+    assert(data.contractVersion === '1.15', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });

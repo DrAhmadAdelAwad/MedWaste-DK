@@ -54,6 +54,8 @@
     Storage.setText(Storage.KEYS.settingsFetchedAt, Date.now());
     Storage.remove(Storage.KEYS.entitiesDirectory);
     Storage.remove(Storage.KEYS.entitiesFetchedAt);
+    Storage.remove(Storage.KEYS.registrationOptions);
+    Storage.remove(Storage.KEYS.registrationOptionsFetchedAt);
     return response;
   }
 

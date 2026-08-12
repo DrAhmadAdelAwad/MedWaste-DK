@@ -6,9 +6,11 @@
   const isFacilityEntry=()=>user.role===Contracts.Roles.FACILITY_ENTRY;
   const isTreatmentEntry=()=>user.role===Contracts.Roles.TREATMENT_ENTRY;
   const isPrivileged=()=>user.role===Contracts.Roles.SUPERVISOR||user.role===Contracts.Roles.ADMIN;
-  const isHealthAdminEntry=()=>isFacilityEntry()&&user.entityType===Contracts.EntityTypes.HEALTH_ADMIN;
-  const isDirectFacilityEntry=()=>isFacilityEntry()&&user.entityType===Contracts.EntityTypes.FACILITY;
-  const isDirectorateAwaitingActivation=()=>isFacilityEntry()&&user.entityType===Contracts.EntityTypes.DIRECTORATE;
+  const assignedEntity=()=>{const d=directory();return [...(d.facilities||[]),...(d.healthAdmins||[]),...(d.treatmentUnits||[]),...(d.directorates||[])].find(x=>x.entityId===user.entityId)||null;};
+  const effectiveEntityType=()=>user.entityType||assignedEntity()?.entityType||'';
+  const isHealthAdminEntry=()=>isFacilityEntry()&&effectiveEntityType()===Contracts.EntityTypes.HEALTH_ADMIN;
+  const isDirectorateAwaitingActivation=()=>isFacilityEntry()&&effectiveEntityType()===Contracts.EntityTypes.DIRECTORATE;
+  const isDirectFacilityEntry=()=>isFacilityEntry()&&!!user.entityId&&!isHealthAdminEntry()&&!isDirectorateAwaitingActivation();
   const source=()=>isPrivileged()?privilegedSource:(isFacilityEntry()?Contracts.EntrySources.FACILITY:Contracts.EntrySources.TREATMENT);
   const isFacilityMode=()=>source()===Contracts.EntrySources.FACILITY;
   const isTreatmentMode=()=>source()===Contracts.EntrySources.TREATMENT;
@@ -25,7 +27,7 @@
     const label=isHealthAdminEntry()?'الإدارة الصحية المسؤولة عن هذا الإدخال':(isFacilityEntry()?'المنشأة المسؤولة عن هذا الإدخال':'وحدة المعالجة المسؤولة عن هذا الإدخال');box.innerHTML=`<span class="font-bold text-red-800">${label}:</span> ${Utils.escapeHtml(isHealthAdminEntry()?assignedAdminName():(user.entityName||'-'))}`;
   }
   function fillAssignedAdminUnits(){const select=document.getElementById('subFacilityName');if(!select)return;const facilities=(directory().facilities||[]).filter(x=>x.mainType==='إدارات صحية'&&x.healthAdmin===assignedAdminName());fillSelect(select,'-- اختر الوحدة الصحية التابعة لإدارتك --',facilities.map(x=>({value:x.name,label:x.name,entityId:x.entityId})));}
-  function refreshOptions(){const s=getSettings();fillSelect(document.getElementById('carNumber'),'-- اختر رقم السيارة --',s.cars);fillSelect(document.getElementById('driverName'),'-- اختر اسم السائق --',s.drivers);fillPrivilegedTreatmentUnits();if(isHealthAdminEntry())fillAssignedAdminUnits();else if(!isDirectFacilityEntry())handleMainTypeChange();}
+  function refreshOptions(){const s=getSettings();fillSelect(document.getElementById('carNumber'),'-- اختر رقم السيارة --',s.cars);fillSelect(document.getElementById('driverName'),'-- اختر اسم السائق --',s.drivers);fillPrivilegedTreatmentUnits();if(isHealthAdminEntry())fillAssignedAdminUnits();else if(!isDirectFacilityEntry())handleMainTypeChange();renderIdentity();configureRoleUI();}
   function fillPrivilegedTreatmentUnits(){const sel=document.getElementById('privilegedTreatmentUnit');if(!sel)return;fillSelect(sel,'-- اختر وحدة المعالجة --',(directory().treatmentUnits||[]).map(x=>({value:x.entityId,label:x.name,entityId:x.entityId})));}
   function handleMainTypeChange(){if(isDirectFacilityEntry()||isHealthAdminEntry())return;const s=getSettings(),main=document.getElementById('facilityMainType')?.value||'',adminBox=document.getElementById('adminContainer'),sub=document.getElementById('subFacilityName'),label=document.getElementById('subFacilityLabel');if(!sub||!label||!adminBox)return;fillSelect(sub,'-- اختر المنشأة / الوحدة --',[]);if(main==='إدارات صحية'){adminBox.classList.remove('hidden');label.innerText='اختر الوحدة الصحية التابعة للإدارة';loadAdminSelectOptions();loadAdminUnits();return;}adminBox.classList.add('hidden');const adm=document.getElementById('healthAdmin');if(adm)adm.value='';let items=[];if(main==='منشأت حكومية'){label.innerText='اختر المستشفى أو المركز الحكومي';items=s.govFacilities;}else if(main==='منشأت خاصة'){label.innerText='اختر المنشأة الخاصة';items=s.privateFacilities;}else if(main==='شركات خاصة'){label.innerText='اختر الشركة الخاصة';items=s.privateCompanies;}else label.innerText='اختر المنشأة / الوحدة';fillSelect(sub,'-- اختر المنشأة / الوحدة --',items);}
   function loadAdminSelectOptions(){fillSelect(document.getElementById('healthAdmin'),'-- اختر الإدارة الصحية --',Object.keys(getSettings().healthAdmins||{}));}

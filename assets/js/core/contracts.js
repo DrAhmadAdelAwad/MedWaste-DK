@@ -26,5 +26,5 @@
   function rolesFor(action){const roles=ActionRoles[String(action||'').trim()];return Array.isArray(roles)?roles:null;}
   function isPublic(action){const roles=rolesFor(action);return Array.isArray(roles)&&roles.length===0;}
   function canRole(role,action){const roles=rolesFor(action);return Array.isArray(roles)&&roles.length>0&&roles.includes(String(role||'').trim());}
-  MW.Contracts=Object.freeze({version:'1.14',Actions,Roles,RoleList,AuthenticatedRoles,EntrySources,EntityTypes,ReconciliationStatus,ActionRoles,ErrorCodes,Limits,rolesFor,isPublic,canRole});
+  MW.Contracts=Object.freeze({version:'1.15',Actions,Roles,RoleList,AuthenticatedRoles,EntrySources,EntityTypes,ReconciliationStatus,ActionRoles,ErrorCodes,Limits,rolesFor,isPublic,canRole});
 })(window.MedWaste);

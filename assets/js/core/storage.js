@@ -15,19 +15,19 @@
     govFacilities: 'sys_gov_facilities',
     privateFacilities: 'sys_priv_facilities',
     privateCompanies: 'sys_priv_companies',
-    treatmentUnits: 'sys_treatment_units',
+    treatmentUnits: 'sys_treatment_units_v3',
     pendingSettings: 'sys_settings_pending',
-    settingsFetchedAt: 'medwaste_settings_fetched_at',
-    entitiesDirectory: 'medwaste_entities_directory',
-    entitiesFetchedAt: 'medwaste_entities_fetched_at',
+    settingsFetchedAt: 'medwaste_settings_fetched_at_v3',
+    entitiesDirectory: 'medwaste_entities_directory_v3',
+    entitiesFetchedAt: 'medwaste_entities_fetched_at_v3',
     facilityRecordsFetchedAt: 'medwaste_facility_records_fetched_at',
     treatmentRecordsFetchedAt: 'medwaste_treatment_records_fetched_at',
     registrationKey: 'medwaste_registration_key',
     registrationEmail: 'medwaste_registration_email',
-    registrationOptions: 'medwaste_registration_options',
-    registrationOptionsFetchedAt: 'medwaste_registration_options_fetched_at',
-    usersBundle: 'medwaste_users_bundle',
-    usersFetchedAt: 'medwaste_users_fetched_at'
+    registrationOptions: 'medwaste_registration_options_v3',
+    registrationOptionsFetchedAt: 'medwaste_registration_options_fetched_at_v3',
+    usersBundle: 'medwaste_users_bundle_v3',
+    usersFetchedAt: 'medwaste_users_fetched_at_v3'
   });
 
   function getText(key, fallback = '') {

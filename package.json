@@ -1,8 +1,8 @@
 {
   "name": "medwaste-dk",
   "private": true,
-  "version": "8.1.8",
-  "description": "MedWaste DK Stage 8.1.6 automatic two-sided reconciliation and performance regression tests",
+  "version": "8.2.2",
+  "description": "MedWaste DK Stage 8.2.2 pricing threshold correction and regression tests",
   "scripts": {
     "test": "node tests/run-tests.js"
   }

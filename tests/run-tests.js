@@ -334,7 +334,7 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.1.9', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.2.2', 'GET clientVersion missing');
     assert(capturedGet.searchParams.get('contractVersion') === '1.10', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
@@ -342,7 +342,7 @@ async function main() {
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.1.9', 'POST clientVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.2.2', 'POST clientVersion missing');
     assert(capturedPost.get('contractVersion') === '1.10', 'POST contractVersion missing');
   });
 
@@ -1190,6 +1190,92 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     }
   });
 
+
+  await test('Stage 8.2.2 pricing: government/admin unit under 4 kg uses 60 EGP minimum and zero transport', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'إدارات صحية',visitType:'نقل نفايات',wasteWeight:3});
+    assert(fin.transportCost === 0, 'under-4 government transport must be zero');
+    assert(fin.treatmentCost === 30, 'under-4 government treatment must be 10 EGP/kg');
+    assert(fin.minimumCharge === 60, 'under-4 government minimum must be 60 EGP');
+    assert(fin.finalTotal === 90, 'under-4 government total must be treatment plus 60 EGP minimum line item');
+  });
+
+  await test('Stage 8.2.2 pricing: government/admin unit from 4 kg uses 5 + 10 EGP per kg', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'منشأت حكومية',visitType:'نقل نفايات',wasteWeight:4});
+    assert(fin.transportCost === 20, 'government transport must be 5 EGP/kg');
+    assert(fin.treatmentCost === 40, 'government treatment must be 10 EGP/kg');
+    assert(fin.minimumCharge === 0, '4kg+ government must not add minimum charge');
+    assert(fin.finalTotal === 60, '4kg government total must equal 60 EGP');
+  });
+
+  await test('Stage 8.2.2 pricing: private facility under 1.72 kg uses treatment plus additive 60 EGP minimum line item', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'منشأت خاصة',visitType:'نقل نفايات',wasteWeight:1.5});
+    assert(fin.transportCost === 0, 'under-1.72 private transport must be zero');
+    assert(fin.treatmentCost === 39, 'under-1.72 private treatment must be 26 EGP/kg');
+    assert(fin.minimumCharge === 60, 'under-1.72 private minimum line item must be 60 EGP');
+    assert(fin.finalTotal === 99, 'under-1.72 private total must equal treatment + 60 EGP');
+  });
+
+  await test('Stage 8.2.2 pricing: private facility at 1.71 kg is still below the 1.72 kg threshold', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'منشأت خاصة',visitType:'نقل نفايات',wasteWeight:1.71});
+    assert(fin.transportCost === 0, '1.71kg private transport must be zero');
+    assert(Math.abs(fin.treatmentCost - 44.46) < 1e-9, '1.71kg private treatment must be 26 EGP/kg');
+    assert(fin.minimumCharge === 60, '1.71kg private must add the 60 EGP minimum line item');
+    assert(Math.abs(fin.finalTotal - 104.46) < 1e-9, '1.71kg private total must equal treatment + 60 EGP');
+  });
+
+  await test('Stage 8.2.2 pricing: private facility at 1.72 kg switches to normal 9 + 26 EGP/kg pricing', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'منشأت خاصة',visitType:'نقل نفايات',wasteWeight:1.72});
+    assert(Math.abs(fin.transportCost - 15.48) < 1e-9, '1.72kg private transport must be 9 EGP/kg');
+    assert(Math.abs(fin.treatmentCost - 44.72) < 1e-9, '1.72kg private treatment must be 26 EGP/kg');
+    assert(fin.minimumCharge === 0, '1.72kg private must not add minimum line item');
+    assert(Math.abs(fin.finalTotal - 60.20) < 1e-9, '1.72kg private total must be 35 EGP/kg');
+  });
+
+  await test('Stage 8.2.2 pricing: private facility above threshold remains 35 EGP/kg split 9 transport + 26 treatment', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'منشأت خاصة',visitType:'نقل نفايات',wasteWeight:2});
+    assert(fin.transportCost === 18, 'private transport must be 9 EGP/kg');
+    assert(fin.treatmentCost === 52, 'private treatment must be 26 EGP/kg');
+    assert(fin.minimumCharge === 0, 'private above threshold must not add minimum line item');
+    assert(fin.finalTotal === 70, 'private total must be 35 EGP/kg');
+  });
+
+  await test('Stage 8.2.2 pricing: private company pays treatment only at 26 EGP/kg', () => {
+    const ctx = frontendContext();
+    load(ctx, 'assets/js/core/namespace.js');
+    load(ctx, 'assets/js/features/claims/pricing.service.js');
+    const fin = ctx.window.MedWaste.Pricing.calculate({facilityMainType:'شركات خاصة',visitType:'نقل نفايات',wasteWeight:2});
+    assert(fin.transportCost === 0, 'company transport must be zero');
+    assert(fin.treatmentCost === 52, 'company treatment must be 26 EGP/kg');
+    assert(fin.finalTotal === 52, 'company total must be treatment only');
+  });
+
+  await test('Stage 8.2.2 claim page uses the centralized pricing service', () => {
+    const page = read('assets/js/pages/facility_report.js');
+    const html = read('facility_report.html');
+    assert(page.includes('Pricing.calculate(record)'), 'claim report is not using centralized pricing');
+    assert(page.includes('بند الحد الأدنى'), 'claim report must label the 60 EGP amount as a separate accounting line item');
+    assert(html.includes('pricing.service.js'), 'pricing service is not loaded by claim page');
+    assert(!page.includes('calculatedTotal < 60'), 'old generic minimum formula still exists');
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
@@ -1207,12 +1293,12 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.1.9', contractVersion: '1.10', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.2.2', contractVersion: '1.10', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.1.9', 'health version mismatch');
-    assert(data.appVersion === '8.1.9', 'response appVersion missing');
+    assert(data.version === '8.2.2', 'health version mismatch');
+    assert(data.appVersion === '8.2.2', 'response appVersion missing');
     assert(data.contractVersion === '1.10', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');

@@ -21,7 +21,13 @@
     entitiesDirectory: 'medwaste_entities_directory',
     entitiesFetchedAt: 'medwaste_entities_fetched_at',
     facilityRecordsFetchedAt: 'medwaste_facility_records_fetched_at',
-    treatmentRecordsFetchedAt: 'medwaste_treatment_records_fetched_at'
+    treatmentRecordsFetchedAt: 'medwaste_treatment_records_fetched_at',
+    registrationKey: 'medwaste_registration_key',
+    registrationEmail: 'medwaste_registration_email',
+    registrationOptions: 'medwaste_registration_options',
+    registrationOptionsFetchedAt: 'medwaste_registration_options_fetched_at',
+    usersBundle: 'medwaste_users_bundle',
+    usersFetchedAt: 'medwaste_users_fetched_at'
   });
 
   function getText(key, fallback = '') {

@@ -7,11 +7,14 @@
     return;
   }
 
+  /* Warm the Apps Script runtime while the user is typing. */
+  window.setTimeout(()=>{try{MW.Api?.health?.().catch(()=>{});}catch(_){}},50);
+
   document.getElementById('loginForm')?.addEventListener('submit', async event => {
     event.preventDefault();
     const button = document.getElementById('submitBtn');
     const message = document.getElementById('statusMsg');
-    button.innerText = 'جاري التحقق...';
+    button.innerText = 'جاري تسجيل الدخول...';
     button.disabled = true;
 
     try {

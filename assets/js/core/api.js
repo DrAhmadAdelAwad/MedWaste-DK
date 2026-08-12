@@ -6,6 +6,7 @@
   const RESERVED_KEYS = new Set(['action', 'requestId', 'clientVersion', 'contractVersion', 'environment', 'token']);
   const inFlightReads = new Map();
   const RETRYABLE_POST_ACTIONS = new Set([
+    Contracts.Actions.REGISTER,
     Contracts.Actions.LOGOUT,
     Contracts.Actions.UPDATE_ROLE,
     Contracts.Actions.SAVE_SETTINGS,
@@ -25,7 +26,7 @@
 
   async function parseResponse(response, requestId) {
     if (!response.ok) {
-      throw new Errors.AppError(`HTTP ${response.status}`, Contracts.ErrorCodes.NETWORK_ERROR, null, null, requestId);
+      throw new Errors.AppError(response.status===404?'تعذر الوصول إلى نسخة الخادم المنشورة (HTTP 404). تأكد من رابط النشر.':`HTTP ${response.status}`,Contracts.ErrorCodes.NETWORK_ERROR,{httpStatus:response.status},null,requestId);
     }
 
     const text = await response.text();
@@ -69,9 +70,15 @@
   }
 
   function maxAttemptsFor(meta) {
-    if (!meta.retryable) return 1;
-    const configured = Number(Config.retry?.maxAttempts) || 3;
-    return Math.max(1, Math.min(5, configured));
+    if(!meta.retryable)return 1;
+    if(meta.action===Contracts.Actions.REGISTER)return 2;
+    const configured=Number(Config.retry?.maxAttempts)||2;return Math.max(1,Math.min(3,configured));
+  }
+  function timeoutFor(meta){
+    if(meta.action===Contracts.Actions.LOGIN)return 15000;
+    if(meta.action===Contracts.Actions.REGISTER)return 25000;
+    if([Contracts.Actions.ADD_RECORD,Contracts.Actions.ADD_RECORDS_BATCH,Contracts.Actions.UPDATE_RECORD,Contracts.Actions.DELETE_RECORD,Contracts.Actions.DELETE_TRIP].includes(meta.action))return 45000;
+    return Number(Config.requestTimeoutMs)||18000;
   }
 
   async function request(url, options, meta) {
@@ -82,7 +89,7 @@
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutId = controller ? window.setTimeout(() => controller.abort(), Config.requestTimeoutMs || 20000) : null;
+      const timeoutId=controller?window.setTimeout(()=>controller.abort(),timeoutFor(meta)):null;
 
       Logger.debug('api_request_started', {requestId, action: meta.action, method: options.method, attempt, maxAttempts});
 
@@ -118,7 +125,7 @@
   }
 
   function createPostBody(action, payload, requestId, includeToken) {
-    const formData = new FormData();
+    const formData = new URLSearchParams();
     formData.append('action', action);
     formData.append('requestId', requestId);
     appendDiagnostics((key, value) => formData.append(key, value));

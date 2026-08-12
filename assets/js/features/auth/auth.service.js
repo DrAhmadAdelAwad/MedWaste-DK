@@ -14,6 +14,8 @@
     return result;
   }
 
+  function registrationKeyFor(email) { return AuthRepository.registrationKeyFor(email); }
+  function clearRegistrationKey() { return AuthRepository.clearRegistrationKey(); }
   function register(payload) {
     Validators.assertRegistration(payload);
     return AuthRepository.register(payload);
@@ -30,5 +32,5 @@
     window.location.href = 'login.html';
   }
 
-  MW.Auth = Object.freeze({ login, register, forgotPassword, logout });
+  MW.Auth = Object.freeze({ login, register, registrationKeyFor, clearRegistrationKey, forgotPassword, logout });
 })(window.MedWaste);

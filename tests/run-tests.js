@@ -64,6 +64,7 @@ function frontendContext(fetchImpl) {
     window: win,
     console,
     URL,
+    URLSearchParams,
     FormData: FakeFormData,
     AbortController,
     setTimeout,
@@ -121,6 +122,15 @@ function backendContext() {
     text,
     setMimeType() { return this; }
   });
+  const scriptProperties = new Map();
+  const properties = {
+    getProperty(key) { return scriptProperties.has(String(key)) ? scriptProperties.get(String(key)) : null; },
+    setProperty(key, value) { scriptProperties.set(String(key), String(value)); return this; },
+    deleteProperty(key) { scriptProperties.delete(String(key)); return this; },
+    getProperties() { return Object.fromEntries(scriptProperties.entries()); },
+    getKeys() { return Array.from(scriptProperties.keys()); },
+    setProperties(obj) { Object.entries(obj || {}).forEach(([k,v]) => scriptProperties.set(String(k), String(v))); return this; }
+  };
   return vm.createContext({
     console,
     Date,
@@ -143,7 +153,8 @@ function backendContext() {
       Charset: { UTF_8: 'UTF_8' },
       computeDigest: (_alg, value) => Array.from(crypto.createHash('sha256').update(String(value), 'utf8').digest())
     },
-    Session: { getScriptTimeZone: () => 'Africa/Cairo' }
+    Session: { getScriptTimeZone: () => 'Africa/Cairo' },
+    PropertiesService: { getScriptProperties: () => properties }
   });
 }
 
@@ -335,16 +346,16 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.4.1', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.13', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.5.0', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.14', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.4.1', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.13', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.5.0', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.14', 'POST contractVersion missing');
   });
 
   await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
@@ -374,7 +385,7 @@ async function main() {
     const ctx = frontendContext(async (_url, options) => {
       attempts += 1;
       requestIds.push(options.body.get('requestId'));
-      if (attempts < 3) throw new Error('temporary network failure');
+      if (attempts < 2) throw new Error('temporary network failure');
       return {
         ok: true,
         text: async () => JSON.stringify({
@@ -390,7 +401,7 @@ async function main() {
     ctx.window.setTimeout = fn => { fn(); return 1; };
     const MW = ctx.window.MedWaste;
     await MW.Api.post(MW.Contracts.Actions.DELETE_TRIP, { tripId: 'trip-1' });
-    assert(attempts === 3, `expected 3 attempts, got ${attempts}`);
+    assert(attempts === 2, `expected 2 attempts, got ${attempts}`);
     assert(new Set(requestIds).size === 1, 'requestId changed across retries');
   });
 
@@ -714,20 +725,18 @@ async function main() {
     assert(MW.Session.getToken() === 'raw-browser-token', 'Session.getToken failed');
   });
 
-  await test('Stage 8 backend stores only token hash for new sessions', () => {
+  await test('Stage 8.5 backend hot sessions never persist the raw token', () => {
     const ctx = backendContext();
-    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Security.gs'].forEach(file => load(ctx, file));
+    ['Config.gs', 'Contracts.gs', 'Utils.gs', 'Security.gs', 'Cache.gs'].forEach(file => load(ctx, file));
     load(ctx, 'SessionRepository.gs');
-    let appended = null;
-    ctx.sessionRepositorySheet_ = () => ({
-      appendRow(row) { appended = row; },
-      getLastRow() { return 1; }
-    });
-    ctx.sessionRepositoryTrimForEmail_ = () => 0;
     const raw = ctx.sessionRepositoryCreate_('user@example.com', new Date(Date.now() + 10000));
-    assert(Boolean(raw), 'raw session token not returned');
-    assert(appended && String(appended[0]).startsWith('tok$'), 'stored session value is not hashed');
-    assert(appended[0] !== raw && !String(appended[0]).includes(raw), 'raw token stored at rest');
+    assert(Boolean(raw), 'raw session token not returned to caller');
+    const props = ctx.PropertiesService.getScriptProperties().getProperties();
+    const serialized = JSON.stringify(props);
+    assert(!serialized.includes(raw), 'raw token persisted in Script Properties');
+    assert(Object.keys(props).some(k => k.startsWith(ctx.HOT_SESSION_PREFIX)), 'hot session was not persisted');
+    const found = ctx.sessionRepositoryFindByToken_(raw);
+    assert(found && found.email === 'user@example.com', 'hot session lookup failed');
   });
 
   await test('Stage 8 login rate limiter blocks at configured threshold', () => {
@@ -809,6 +818,9 @@ async function main() {
     ctx.validateRegistrationInput_ = () => null;
     ctx.withScriptLock_ = (_name, fn) => fn();
     ctx.userRepositoryFindByEmail_ = () => null;
+    ctx.userRepositoryFindAuthFast_ = () => null;
+    ctx.registrationReceiptGet_ = () => null;
+    ctx.registrationReceiptPut_ = () => true;
     ctx.userRepositoryIsEmpty_ = () => false;
     ctx.entityRepositoryFindById_ = () => ({entity:{entityId:'FAC-1',entityType:'facility',name:'Facility',active:true}});
     let appended = null;
@@ -1097,6 +1109,9 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     ctx.normalizeEmail_=v=>String(v||'').trim().toLowerCase();
     ctx.withScriptLock_=(_n,fn)=>fn();
     ctx.userRepositoryFindByEmail_=()=>null;
+    ctx.userRepositoryFindAuthFast_=()=>null;
+    ctx.registrationReceiptGet_=()=>null;
+    ctx.registrationReceiptPut_=()=>true;
     ctx.userRepositoryIsEmpty_=()=>false;
     ctx.entityRepositoryFindById_=()=>({entity:{entityId:'ADM-A',entityType:'health_admin',name:'إدارة أ',active:true}});
     ctx.userRepositoryFindByAssignment_=()=>({user:{email:'old@example.com'}});
@@ -1111,9 +1126,9 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   await test('Stage 8.1.7 registration offers whole health administrations instead of their units', () => {
     const registerJs = read('assets/js/pages/register.js');
     const entitiesGs = read('Entities.gs');
-    assert(registerJs.includes("if(type==='إدارات صحية')list=healthAdmins"), 'registration does not switch to health administration entities');
+    assert(/type==='إدارات صحية'\)\{?list=healthAdmins/.test(registerJs), 'registration does not switch to health administration entities');
     assert(entitiesGs.includes("healthAdmins: entityRepositoryList_(ENTITY_TYPES.HEALTH_ADMIN"), 'registration endpoint does not expose health administrations');
-    assert(entitiesGs.includes("x.mainType !== 'إدارات صحية'"), 'health-unit facilities are still independently registrable');
+    assert(/x\.mainType\s*!==?\s*'إدارات صحية'/.test(entitiesGs), 'health-unit facilities are still independently registrable');
   });
 
   await test('Stage 8.1.7 one account per health administration is enforced server-side', () => {
@@ -1367,14 +1382,14 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   await test('Stage 8.4.1 registration exposes complete assignment categories and directorate', () => {
     const html=read('register.html'),js=read('assets/js/pages/register.js'),entities=read('Entities.gs');
     assert(html.includes('مديرية الشئون الصحية بالدقهلية'),'directorate registration option missing');
-    assert(js.includes("if(type==='إدارات صحية')list=healthAdmins")&&js.includes('list=directorates'),'registration category mapping incomplete');
-    assert(entities.includes('facilities: data.facilities.filter')&&entities.includes('healthAdmins: data.healthAdmins')&&entities.includes('directorates: data.directorates'),'registration endpoint payload incomplete');
+    assert(/type==='إدارات صحية'\)\{?list=healthAdmins/.test(js)&&js.includes('directorates[0]'),'registration category mapping incomplete');
+    assert(/facilities\s*:\s*data\.facilities\.filter/.test(entities)&&/healthAdmins\s*:\s*data\.healthAdmins/.test(entities)&&/directorates\s*:\s*data\.directorates/.test(entities),'registration endpoint payload incomplete');
   });
 
   await test('Stage 8.4.1 users page is cached, single-request and lazy-renders entity choices', () => {
     const users=read('UserRepository.gs'),page=read('assets/js/pages/admin_users.js'),repo=read('assets/js/data/repositories/users.repository.js');
     assert(users.includes("medwaste:users:list:")&&users.includes('USER_LIST_CACHE_SECONDS'),'backend user-list cache missing');
-    assert(repo.includes('listBundle')&&page.includes('UsersRepository.listBundle()'),'users page does not use one bundled request');
+    assert(repo.includes('listBundle')&&page.includes('UsersRepository.listBundle('),'users page does not use one bundled request');
     assert(page.includes("sel.dataset.loaded='0'")&&page.includes("e.target.dataset.loaded!=='1'"),'entity dropdowns are not lazily populated');
   });
 
@@ -1400,11 +1415,65 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     assert(settings.includes('entityRepositorySyncFromSettings_()'),'settings save no longer synchronizes the entity registry');
   });
 
+
+  await test('Stage 8.5 direct facility entry never requires a manual facility selection', () => {
+    const validators=read('assets/js/core/validators.js'), trips=read('assets/js/features/trips/trips.service.js'), records=read('Records.gs');
+    assert(validators.includes("!facilityId&&(!main||!name)"),'facilityId is not accepted as canonical selection');
+    assert(trips.includes('autoAssigned')&&trips.includes('Validators.assertFacility(batch[0],!autoAssigned)'),'direct facility validation is not automatic');
+    assert(records.includes('facilityFound = entityRepositoryFindById_(auth.user.entityId)'),'backend does not force the logged-in facility identity');
+  });
+
+  await test('Stage 8.5 public registration shows health administrations and auto-binds the directorate', () => {
+    const page=read('assets/js/pages/register.js'),html=read('register.html'),entities=read('Entities.gs');
+    assert(page.includes("if(type==='إدارات صحية'){list=healthAdmins"),'health administration list is not wired to registration');
+    assert(page.includes("const dir=directorates[0]||null")&&page.includes("wrap?.classList.add('hidden')"),'directorate is not auto-bound without a second selector');
+    assert(!html.includes('directorateHint'),'obsolete directorate supervisory choice/hint remains visible');
+    assert(entities.includes('if(!data.healthAdmins.length||!data.directorates.length)'),'missing registration entity classes are not repaired');
+    assert(!entities.includes('expectedAdmins=Object.keys'),'public registration still reads settings just to validate the directory');
+  });
+
+  await test('Stage 8.5 registration retry is idempotent after a lost success response', () => {
+    const auth=read('Auth.gs'),page=read('assets/js/pages/register.js'),repo=read('assets/js/data/repositories/auth.repository.js');
+    assert((auth.match(/registrationReceiptGet_/g)||[]).length>=3&&auth.includes('receiptAfterLock')&&auth.includes('idempotentReplay:true'),'registration receipt replay/race protection is missing');
+    assert(repo.includes('registrationKeyFor')&&repo.includes('registrationEmail'),'stable client registration key is missing');
+    assert(page.includes('registrationKey:Auth.registrationKeyFor(email)'),'registration request does not reuse the stable key');
+    assert(page.includes('تم إنشاء الحساب بنجاح'),'explicit registration success feedback is missing');
+  });
+
+  await test('Stage 8.5 protected handlers reuse router authorization instead of authenticating twice', () => {
+    const access=read('AccessControl.gs');
+    assert(access.includes('params.__authContext')&&access.includes('params.__authAction === normalizedAction'),'router authorization is not reused by handlers');
+    assert(access.includes('params.__authAction = clean_(action)'),'router does not mark the authorized action for reuse');
+  });
+
+  await test('Stage 8.5 hot auth/session path avoids Google Sheets for normal protected requests', () => {
+    const users=read('UserRepository.gs'),sessions=read('SessionRepository.gs'),auth=read('Auth.gs'),sessionUse=read('Sessions.gs');
+    assert(users.includes('userRepositoryFindAuthFast_')&&users.includes('HOT_USER_PREFIX'),'persistent hot user index missing');
+    assert(sessions.includes('sessionHotCreate_')&&sessions.includes('HOT_SESSION_PREFIX'),'persistent hot sessions missing');
+    assert(auth.includes('userRepositoryFindAuthFast_(email)'),'login still performs the normal sheet lookup');
+    assert(sessionUse.includes('userRepositoryFindAuthFast_(session.email)'),'protected request auth still reloads user rows from Sheets');
+  });
+
+  await test('Stage 8.5 scoped reads and normal saves avoid whole-sheet scans', () => {
+    const repo=read('RecordRepository.gs'),records=read('Records.gs'),frontendRepo=read('assets/js/data/repositories/records.repository.js');
+    assert(repo.includes('recordRepositoryRowsForDateRange_')&&repo.includes('createTextFinder'),'date-scoped read optimization missing');
+    assert(records.includes("dedupe=clean_(p.dedupeCheck)==='1'")&&records.includes('dedupe?recordRepositoryExistingIdsFor_'),'normal save still performs the expensive ID scan');
+    assert(frontendRepo.includes("dedupeCheck:options.dedupeCheck?'1':'0'"),'pending retry does not explicitly enable dedupe check');
+  });
+
+  await test('Stage 8.5 high-frequency audit writes are queued instead of blocking user actions', () => {
+    const audit=read('AuditRepository.gs'),code=read('Code.gs');
+    assert(audit.includes('auditShouldDefer_')&&audit.includes('AUDIT_QUEUE_PREFIX'),'audit queue missing');
+    assert(audit.includes('function flushAuditQueue()'),'audit batch flush missing');
+    assert(code.includes('ensureAuditFlushTrigger_')&&code.includes('flushAuditQueue'),'setup does not install/warm the audit queue');
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Logging.gs', 'Cache.gs', 'Security.gs', 'Validators.gs',
       'AccessControl.gs', 'Audit.gs', 'RecordMapper.gs', 'UserMapper.gs',
+      'RecordRepository.gs', 'UserRepository.gs', 'SessionRepository.gs',
       'EntityRepository.gs', 'Reconciliation.gs', 'Records.gs', 'Idempotency.gs', 'Router.gs', 'SelfTests.gs'
     ].forEach(file => load(ctx, file));
     const result = ctx.runSelfTests();
@@ -1417,13 +1486,13 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.4.1', contractVersion: '1.13', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.5.0', contractVersion: '1.14', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.4.1', 'health version mismatch');
-    assert(data.appVersion === '8.4.1', 'response appVersion missing');
-    assert(data.contractVersion === '1.13', 'health contract version mismatch');
+    assert(data.version === '8.5.0', 'health version mismatch');
+    assert(data.appVersion === '8.5.0', 'response appVersion missing');
+    assert(data.contractVersion === '1.14', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });

@@ -9,7 +9,7 @@
   }
   function makeReference(date,source){const side=source===Contracts.EntrySources.FACILITY?'F':'T';return `MW-${side}-${String(date||'').replace(/-/g,'')}-${Utils.generateId('').replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase()}`;}
   function validateForSource(source,batch){
-    if(source===Contracts.EntrySources.FACILITY){if(!Array.isArray(batch)||batch.length!==1)throw Errors.validation('إدخال جهة المنشأة يسجل منشأة أو وحدة واحدة في كل عملية.');Validators.assertFacility(batch[0],true);return;}
+    if(source===Contracts.EntrySources.FACILITY){if(!Array.isArray(batch)||batch.length!==1)throw Errors.validation('إدخال جهة المنشأة يسجل منشأة أو وحدة واحدة في كل عملية.');const u=Session.getUser()||{},autoAssigned=u.role===Contracts.Roles.FACILITY_ENTRY&&u.entityType===Contracts.EntityTypes.FACILITY;Validators.assertFacility(batch[0],!autoAssigned);return;}
     Validators.assertBatch(batch);
   }
   function createRecords(route,batch,sourceOverride){
@@ -21,7 +21,7 @@
   function saveResponsive(route,batch,sourceOverride){Validators.assertRoute(route);const source=sourceForUser(sourceOverride);validateForSource(source,batch);const records=createRecords(route,batch,source);RecordsRepository.appendLocal(source,records);const cloudPromise=RecordsRepository.saveBatch(source,records).then(response=>{if(response.result==='success'){RecordsRepository.markSynced(source,records.map(r=>r.recordId));return{cloudSaved:true,response};}return{cloudSaved:false,response};}).catch(error=>{if(!Errors.isRetryable(error))RecordsRepository.removeByIds(source,records.map(r=>r.recordId));Logger.warn('trip_background_sync_deferred',{error,pendingRecords:records.length,source});return{cloudSaved:false,error};});return{records,source,cloudPromise,cloudSaved:false};}
   async function syncPending(sourceOverride){
     const sources=isPrivileged()&&!sourceOverride?[Contracts.EntrySources.FACILITY,Contracts.EntrySources.TREATMENT]:[sourceForUser(sourceOverride)];let synced=0;
-    for(const source of sources){const pending=RecordsRepository.getLocal(source).filter(r=>r&&r._syncStatus==='pending'&&r.recordId&&r.tripId);if(!pending.length||!Session.getToken())continue;const response=await RecordsRepository.saveBatch(source,pending);if(response.result==='success'){RecordsRepository.markSynced(source,pending.map(r=>r.recordId));synced+=pending.length;}}
+    for(const source of sources){const pending=RecordsRepository.getLocal(source).filter(r=>r&&r._syncStatus==='pending'&&r.recordId&&r.tripId);if(!pending.length||!Session.getToken())continue;const response=await RecordsRepository.saveBatch(source,pending,{dedupeCheck:true});if(response.result==='success'){RecordsRepository.markSynced(source,pending.map(r=>r.recordId));synced+=pending.length;}}
     return{synced};
   }
   const group=records=>TripEntity.group(records);

@@ -54,9 +54,7 @@
     primeAssignmentForRow(row,user);return row;
   }
   function renderUsers(users){const table=document.getElementById('usersTable'),frag=document.createDocumentFragment();table.innerHTML='';(users||[]).forEach(u=>frag.appendChild(userRow(u)));table.appendChild(frag);document.getElementById('usersCount')?.replaceChildren(document.createTextNode(String((users||[]).length)));}
-  async function loadUsers(){const table=document.getElementById('usersTable');try{
-    const bundle=await UsersRepository.listBundle();usersCache=bundle.users||[];entities=bundle.entities||entities;renderUsers(usersCache);
-  }catch(error){table.innerHTML='<tr><td colspan="5" class="p-8 text-center text-rose-500">حدث خطأ في تحميل بيانات المستخدمين</td></tr>';}}
+  async function loadUsers(){const table=document.getElementById('usersTable'),local=UsersRepository.cachedBundle?.();if(local){usersCache=local.users||[];entities=local.entities||entities;renderUsers(usersCache);}try{const bundle=await UsersRepository.listBundle({force:!!local});usersCache=bundle.users||[];entities=bundle.entities||entities;renderUsers(usersCache);}catch(error){if(!local)table.innerHTML='<tr><td colspan="5" class="p-8 text-center text-rose-500">حدث خطأ في تحميل بيانات المستخدمين</td></tr>';}}
   async function updateRole(row,button){const email=row.dataset.email,role=row.querySelector('.role-select').value,entityId=row.querySelector('.entity-select').value;try{
     Validators.assertAccessAssignment(role,entityId);button.textContent='جاري الحفظ...';button.disabled=true;await UsersRepository.updateRole(email,role,entityId);
     const idx=usersCache.findIndex(x=>x.email===email);if(idx>=0){usersCache[idx].role=role;const all=[...(entities.facilities||[]),...(entities.healthAdmins||[]),...(entities.treatmentUnits||[]),...(entities.directorates||[])],e=all.find(x=>x.entityId===entityId);usersCache[idx].entityId=entityId;usersCache[idx].entityName=e?.name||'';usersCache[idx].entityType=e?.entityType||'';}

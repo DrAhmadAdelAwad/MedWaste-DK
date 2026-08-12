@@ -26,7 +26,7 @@
       <td class="p-4"><span class="inline-flex rounded-full bg-red-50 text-red-800 border border-red-100 px-3 py-1 text-xs font-bold user-role"></span></td>
       <td class="p-4"><div class="text-sm font-bold text-slate-700 entity-name"></div><div class="text-[10px] text-slate-400 entity-id"></div></td>
       <td class="p-4"><div class="flex flex-wrap gap-2">
-        <button type="button" class="edit-user-btn bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg">تعديل</button>
+        <button type="button" class="edit-user-btn bg-red-700 hover:bg-red-800 text-white text-xs font-black px-4 py-2 rounded-lg shadow-sm">✏️ تعديل الصلاحية والجهة</button>
         <button type="button" class="delete-user-btn bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold px-4 py-2 rounded-lg">حذف</button>
       </div></td>`;
     tr.querySelector('.user-name').textContent=user.fullName||'';
@@ -45,7 +45,8 @@
     if(!(users||[]).length)table.innerHTML='<tr><td colspan="5" class="p-8 text-center text-slate-500">لا توجد حسابات مطابقة.</td></tr>';
   }
   async function loadUsers(){
-    const table=$('usersTable'),local=UsersRepository.cachedBundle?.();
+    const table=$('usersTable'),local=UsersRepository.cachedBundle?.(),hint=$('usersAdminHint');
+    if(hint)hint.textContent='يمكن للمدير تعديل الصلاحية والجهة أو حذف المستخدم. اضغط «تعديل الصلاحية والجهة» بجوار الحساب المطلوب.';
     if(local){usersCache=local.users||[];entities=local.entities||entities;renderUsers(usersCache);}
     try{
       const bundle=await UsersRepository.listBundle({force:false});
@@ -99,7 +100,7 @@
     if(role===Contracts.Roles.ADMIN||role===Contracts.Roles.SUPERVISOR)entityId=directorate()?.entityId||'';
     try{
       Validators.assertAccessAssignment(role,entityId);const btn=$('saveUserEdit');btn.disabled=true;btn.textContent='جاري الحفظ...';
-      await UsersRepository.updateRole(editingEmail,role,entityId);
+      await UsersRepository.updateRole(editingEmail,role,entityId);UsersRepository.invalidate?.();
       user.role=role;const e=findEntity(entityId);user.entityId=entityId;user.entityName=e?.name||((role===Contracts.Roles.ADMIN||role===Contracts.Roles.SUPERVISOR)?'مديرية الشئون الصحية بالدقهلية':'');user.entityType=e?.entityType||'';
       renderUsers(usersCache);closeEdit();alert('تم حفظ الصلاحية والجهة بنجاح. سيحتاج المستخدم لتسجيل الدخول مجدداً.');
     }catch(error){alert(error.message||'تعذر حفظ التعديل.');}finally{const btn=$('saveUserEdit');if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';}}

@@ -9,7 +9,7 @@
   }
   function makeReference(date,source){const side=source===Contracts.EntrySources.FACILITY?'F':'T';return `MW-${side}-${String(date||'').replace(/-/g,'')}-${Utils.generateId('').replace(/[^a-zA-Z0-9]/g,'').slice(0,8).toUpperCase()}`;}
   function validateForSource(source,batch){
-    if(source===Contracts.EntrySources.FACILITY){if(!Array.isArray(batch)||batch.length!==1)throw Errors.validation('إدخال جهة المنشأة يسجل منشأة أو وحدة واحدة في كل عملية.');const u=Session.getUser()||{},autoAssigned=u.role===Contracts.Roles.FACILITY_ENTRY&&u.entityType===Contracts.EntityTypes.FACILITY;Validators.assertFacility(batch[0],!autoAssigned);return;}
+    if(source===Contracts.EntrySources.FACILITY){Validators.assertBatch(batch);return;}
     Validators.assertBatch(batch);
   }
   function createRecords(route,batch,sourceOverride){

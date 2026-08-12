@@ -15,19 +15,19 @@
     govFacilities: 'sys_gov_facilities',
     privateFacilities: 'sys_priv_facilities',
     privateCompanies: 'sys_priv_companies',
-    treatmentUnits: 'sys_treatment_units_v3',
+    treatmentUnits: 'sys_treatment_units_v4',
     pendingSettings: 'sys_settings_pending',
-    settingsFetchedAt: 'medwaste_settings_fetched_at_v3',
-    entitiesDirectory: 'medwaste_entities_directory_v3',
-    entitiesFetchedAt: 'medwaste_entities_fetched_at_v3',
+    settingsFetchedAt: 'medwaste_settings_fetched_at_v4',
+    entitiesDirectory: 'medwaste_entities_directory_v4',
+    entitiesFetchedAt: 'medwaste_entities_fetched_at_v4',
     facilityRecordsFetchedAt: 'medwaste_facility_records_fetched_at',
     treatmentRecordsFetchedAt: 'medwaste_treatment_records_fetched_at',
     registrationKey: 'medwaste_registration_key',
     registrationEmail: 'medwaste_registration_email',
-    registrationOptions: 'medwaste_registration_options_v3',
-    registrationOptionsFetchedAt: 'medwaste_registration_options_fetched_at_v3',
-    usersBundle: 'medwaste_users_bundle_v3',
-    usersFetchedAt: 'medwaste_users_fetched_at_v3'
+    registrationOptions: 'medwaste_registration_options_v4',
+    registrationOptionsFetchedAt: 'medwaste_registration_options_fetched_at_v4',
+    usersBundle: 'medwaste_users_bundle_v4',
+    usersFetchedAt: 'medwaste_users_fetched_at_v4'
   });
 
   function getText(key, fallback = '') {

@@ -21,7 +21,7 @@
   const active = PROFILES[ENVIRONMENT] || PROFILES.production;
 
   MW.Config = Object.freeze({
-    appVersion: '8.5.2',
+    appVersion: '8.5.3',
     environment: ENVIRONMENT,
     apiUrl: active.apiUrl,
     requestTimeoutMs: active.requestTimeoutMs,

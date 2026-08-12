@@ -346,16 +346,16 @@ async function main() {
     const health = await MW.Api.get(MW.Contracts.Actions.HEALTH, { requestId: 'spoofed', clientVersion: '0.0', token: 'spoofed-token' });
     assert(/^req-/.test(capturedGet.searchParams.get('requestId')), 'GET requestId missing');
     assert(capturedGet.searchParams.get('requestId') !== 'spoofed', 'reserved GET requestId was overridden');
-    assert(capturedGet.searchParams.get('clientVersion') === '8.5.2', 'GET clientVersion missing');
-    assert(capturedGet.searchParams.get('contractVersion') === '1.15', 'GET contractVersion missing');
+    assert(capturedGet.searchParams.get('clientVersion') === '8.5.3', 'GET clientVersion missing');
+    assert(capturedGet.searchParams.get('contractVersion') === '1.16', 'GET contractVersion missing');
     assert(capturedGet.searchParams.get('token') === null, 'GET URL leaked a session token');
     assert(health.requestId === capturedGet.searchParams.get('requestId'), 'GET response requestId mismatch');
 
     await MW.Api.post(MW.Contracts.Actions.LOGIN, { email: 'user@example.com', password: 'secret123', requestId: 'spoofed', clientVersion: '0.0' });
     assert(/^req-/.test(capturedPost.get('requestId')), 'POST requestId missing');
     assert(capturedPost.get('requestId') !== 'spoofed', 'reserved POST requestId was overridden');
-    assert(capturedPost.get('clientVersion') === '8.5.2', 'POST clientVersion missing');
-    assert(capturedPost.get('contractVersion') === '1.15', 'POST contractVersion missing');
+    assert(capturedPost.get('clientVersion') === '8.5.3', 'POST clientVersion missing');
+    assert(capturedPost.get('contractVersion') === '1.16', 'POST contractVersion missing');
   });
 
   await test('Stage 8 protected reads use POST body and never URL tokens', async () => {
@@ -1423,10 +1423,11 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
   });
 
 
-  await test('Stage 8.5 direct facility entry never requires a manual facility selection', () => {
-    const validators=read('assets/js/core/validators.js'), trips=read('assets/js/features/trips/trips.service.js'), records=read('Records.gs');
+  await test('Stage 8.5.3 direct facility entry is auto-assigned and supports a batch of trips', () => {
+    const validators=read('assets/js/core/validators.js'), trips=read('assets/js/features/trips/trips.service.js'), records=read('Records.gs'),form=read('assets/js/features/trips/trip-form.js');
     assert(validators.includes("!facilityId&&(!main||!name)"),'facilityId is not accepted as canonical selection');
-    assert(trips.includes('autoAssigned')&&trips.includes('Validators.assertFacility(batch[0],!autoAssigned)'),'direct facility validation is not automatic');
+    assert(trips.includes("if(source===Contracts.EntrySources.FACILITY){Validators.assertBatch(batch);return;}"),'facility-side batch validation is still restricted to one row');
+    assert(form.includes("facilityId:f.facilityId||user.entityId||''"),'direct facility batch item does not carry the authenticated facility ID');
     assert(records.includes('facilityFound = entityRepositoryFindById_(auth.user.entityId)'),'backend does not force the logged-in facility identity');
   });
 
@@ -1475,6 +1476,48 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     assert(code.includes('ensureAuditFlushTrigger_')&&code.includes('flushAuditQueue'),'setup does not install/warm the audit queue');
   });
 
+  await test('Stage 8.5.3 canonical directory removes administration aliases and renames Aga treatment unit', () => {
+    const ref=read('ReferenceData.gs'),defaults=read('ReferenceDefaults.gs'),config=read('Config.gs'),entitiesRepo=read('assets/js/data/repositories/entities.repository.js');
+    assert(ref.includes('referenceHealthAdminKey_')&&ref.includes('referenceNormalizeSettingsSnapshot_')&&ref.includes('migrateCanonicalReferenceLinks_'),'canonical reference migration is missing');
+    assert(config.includes("AJA_TREATMENT_NAME = 'محرقة أجا'"),'Aga treatment canonical constant missing');
+    assert(defaults.includes('"محرقة أجا"')&&!defaults.includes('"محرقة ميت غمر",\n    "محرقتا شبراهور"'),'treatment defaults still use Mit Ghamr');
+    assert(entitiesRepo.includes('normalizeDirectory')&&entitiesRepo.includes('adminKey')&&entitiesRepo.includes("return 'محرقة أجا'"),'frontend directory dedupe/rename protection missing');
+  });
+
+  await test('Stage 8.5.3 settings migration merges duplicate Bani Ebeid administration labels into one key', () => {
+    const ctx=backendContext();
+    ['Config.gs','ReferenceDefaults.gs','Utils.gs','ReferenceData.gs'].forEach(file=>load(ctx,file));
+    const normalized=ctx.referenceNormalizeSettingsSnapshot_({
+      healthAdmins:{
+        'إدارة بنى عبيد':['وحدة تجريبية 1'],
+        'الادارة الصحية ببني عبيد':['وحدة تجريبية 2']
+      },
+      cars:[],drivers:[],govFacilities:[],privateFacilities:[],privateCompanies:[],
+      treatmentUnits:['محرقة ميت غمر','محرقة أجا']
+    },ctx.referenceDefaults_());
+    const adminKeys=Object.keys(normalized.healthAdmins).filter(x=>ctx.referenceHealthAdminKey_(x)===ctx.referenceHealthAdminKey_('إدارة بنى عبيد'));
+    assert(adminKeys.length===1,'Bani Ebeid still has duplicate administration keys after migration');
+    const units=normalized.healthAdmins[adminKeys[0]]||[];
+    assert(units.includes('وحدة تجريبية 1')&&units.includes('وحدة تجريبية 2'),'duplicate administration units were not merged');
+    assert(normalized.treatmentUnits.filter(x=>ctx.referenceArabicKey_(ctx.normalizeTreatmentUnitName_(x))===ctx.referenceArabicKey_('محرقة أجا')).length===1,'Aga/Mit Ghamr treatment duplicate was not collapsed');
+  });
+
+  await test('Stage 8.5.3 facility and health-administration entry supports multi-entry batches', () => {
+    const form=read('assets/js/features/trips/trip-form.js'),html=read('index.html');
+    assert(form.includes('function batchItemFromFacility')&&form.includes('function addFacilityToBatch()'),'shared batch builder missing');
+    assert(!form.includes('function addFacilityToBatch(){if(!isTreatmentMode())return;'),'facility-side batch is still blocked');
+    assert(form.includes("add?.classList.remove('hidden')"),'batch add control is not enabled for facility-side roles');
+    assert(form.includes("if(!currentBatch.length){const f=collectFacilityFromForm()"),'single-entry fallback no longer feeds the shared batch');
+    assert(html.includes('إضافة هذا الإدخال للقائمة')&&html.includes('الإدخالات المضافة للرحلة الحالية'),'multi-entry UI text is missing');
+  });
+
+  await test('Stage 8.5.3 admin user page exposes edit role/entity and save action', () => {
+    const page=read('assets/js/pages/admin_users.js'),html=read('admin_users.html');
+    assert(page.includes('✏️ تعديل الصلاحية والجهة')&&page.includes('saveEdit()')&&page.includes('UsersRepository.updateRole'),'admin edit action is not wired');
+    assert(html.includes('id="userEditModal"')&&html.includes('id="saveUserEdit"')&&html.includes('حفظ التعديل'),'admin edit modal/save button missing');
+    assert(html.includes('usersAdminHint'),'admin edit guidance is missing');
+  });
+
   await test('backend self-tests', () => {
     const ctx = backendContext();
     [
@@ -1493,13 +1536,13 @@ test('Stage 8.1.6 dedicated full-admin reconciliation action is explicit and aut
     [
       'Config.gs', 'Contracts.gs', 'Utils.gs', 'Validators.gs', 'Logging.gs', 'Router.gs', 'Code.gs'
     ].forEach(file => load(ctx, file));
-    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.5.2', contractVersion: '1.15', environment: 'production' } });
+    const output = ctx.doGet({ parameter: { action: 'health', requestId: 'req-health-test', clientVersion: '8.5.3', contractVersion: '1.16', environment: 'production' } });
     const data = JSON.parse(output.text);
     assert(data.result === 'success', 'health failed');
     assert(data.requestId === 'req-health-test', 'health requestId missing');
-    assert(data.version === '8.5.2', 'health version mismatch');
-    assert(data.appVersion === '8.5.2', 'response appVersion missing');
-    assert(data.contractVersion === '1.15', 'health contract version mismatch');
+    assert(data.version === '8.5.3', 'health version mismatch');
+    assert(data.appVersion === '8.5.3', 'response appVersion missing');
+    assert(data.contractVersion === '1.16', 'health contract version mismatch');
     assert(data.environment === 'production', 'health environment missing');
     assert(Boolean(data.serverTime), 'health serverTime missing');
   });
